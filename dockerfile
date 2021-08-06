@@ -1,22 +1,22 @@
-FROM continuumio/anaconda3
+FROM conda/miniconda3
+
+WORKDIR /home/mts
 
 COPY mts-env.yaml mts-env.yaml
 RUN conda env create -f mts-env.yaml
 
-# RUN echo "conda activate mts" >> ~/.bashrc
+RUN echo "conda activate mts" > ~/.bashrc
 SHELL ["/bin/bash", "--login", "-c"]
 
-ENV NB_USER mts
-ENV NB_UID 1000
-
-RUN useradd -m -s /bin/bash -N -u $NB_UID $NB_USER
-
-WORKDIR /home/${NB_USER}
-USER $NB_USER
-
+RUN conda init
 RUN conda activate mts && \
 	jupyter kernelspec remove -f python3 && \
-	ipython kernel install --name mts --user
+	ipython kernel install --name mts --user && \
+	python -m pip install -U \
+	https://storage.googleapis.com/tensorflow/linux/cpu/tensorflow_cpu-2.5.0-cp39-cp39-manylinux2010_x86_64.whl \
+	&& pip install -U imgaug
 
 EXPOSE 8888
-CMD ["conda", "activate", "mts", "&&", "jupyter", "notebook", "--port=8888", "--no-browser", "--ip=0.0.0.0", "--allow-root"]
+# CMD ['/bin/bash', '&&', 'conda', 'activate', '	mts']
+# CMD ["jupyter", "notebook", "--port=8888", "--no-browser", "--ip=0.0.0.0", "--allow-root"]
+# jupyter notebook --port=8888 --no-browser --ip=0.0.0.0 --allow-root
