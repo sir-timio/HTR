@@ -2,7 +2,7 @@
 MTS summer school homeworks
 
 Handwritten text recognition on line level
-
+used dataset: https://github.com/abdoelsayed2016/HKR_Dataset
 
 # HOW TO USE WITH DOCKER
 - install DOCKER on your system
@@ -20,3 +20,5 @@ docker run -it -p 8888:8888 -v /mnt/d/python/MTS:/home/mts/mnt mts/test
 ```bash
 jupyter notebook --port=8888 --no-browser --ip=0.0.0.0 --allow-root
 ```
+
+
