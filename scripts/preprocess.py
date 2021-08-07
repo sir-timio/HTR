@@ -42,9 +42,12 @@ def meta_collect(ann_path: str, result_file: str,
                 print(tmp['description'])
 
 
-def make_augments(df: pd.DataFrame, num: int = 1, ready: int = 1) -> str:
+def make_augments(df: pd.DataFrame,
+                  ready: int = 1,
+                  img_path: str = os.path.join('HKR_Dataset_Words_Public', 'img'),
+                  ) -> str:
     paths = df.index.to_series().apply(lambda x: os.path.join(img_path, x) + '.jpg')
-
+    aug_df = pd.DataFrame(df[['description']])
     aug_1 = os.path.join(img_path, 'aug_1')
     if not ready:
         return aug_1
@@ -72,29 +75,19 @@ def make_augments(df: pd.DataFrame, num: int = 1, ready: int = 1) -> str:
         random_order=True
     )
 
-    if num == 1:
-        paths = [paths[i:i + 1000] for i in range(0, len(paths), 1000)]
-        for path in tqdm(paths):
-            img = [imageio.imread(i) for i in path]
-            ls = seq(images=img)
-
-            for i in range(len(path)):
-                _, name = os.path.split(path[i])
-                name = os.path.join(aug_1, f'aug_' + name)
-                cv2.imwrite(name, ls[i])
-
+    paths = [paths[i:i + 500] for i in range(0, len(paths), 500)]
     for path in tqdm(paths):
-        img = imageio.imread(path)
-        image = [copy(img) for _ in range(num)]
-
-        ls = seq(images=image)
-
-        for i in range(num):
-            _, name = os.path.split(path)
-            name = os.path.join(aug_1, f'{i}_aug_' + name)
+        img = [imageio.imread(i) for i in path]
+        ls = seq(images=img)
+        aug_df = aug_df.copy()
+        for i in range(len(path)):
+            _, name = os.path.split(path[i])
+            ind = os.path.splitext(name)[0]
+            name = os.path.join(aug_1, f'aug_' + name)
             cv2.imwrite(name, ls[i])
-
-    return aug_1
+            aug_df[os.path.join('aug_1', 'aug_' + ind), 'description'] = df.loc[ind, 'description']
+    aug_df.tocsv('data/augmeta.tsv', sep='\t')
+    return aug_df.copy()
 
 
 class PreprocessFrame(pd.DataFrame):
@@ -130,11 +123,25 @@ class PreprocessFrame(pd.DataFrame):
                 print('Cant open metadata file')
                 return 1
 
+    def counts_to_df(self, column: str = 'description') -> pd.DataFrame:
+        '''Return dataframe with symbols counts in "column"'''
+
+        counts = pd.DataFrame(self[column].str.split('').explode())
+        counts = counts.join(counts[column].value_counts(), on=column, rsuffix='1')
+        counts.rename(columns={column: 'symbols',
+                               column + '1': 'counts', },
+                      inplace=True)
+        counts = counts[~counts.isin(['', ' '])].dropna()
+
+        return counts
+
     def __rework(self, rem_str: str, subs_str: str) -> None:
         '''/df'''
 
-        if all(self.columns.isin(['predicted', 'isModerated'])):
-            self = self.drop(['predicted', 'isModerated'], axis=1)
+        if 'predicted' in self.columns:
+            self.drop('predicted', axis=1, inplace=True)
+        if 'isModerated' in self.columns:
+            self.drop('isModerated', axis=1, inplace=True)
 
         self['description'] = self.description.str.replace('o', 'о').str.replace('H', 'Н')
         self['description'] = self.description.str.replace('–', '-').str.replace('—', '-').str.replace('…', '...')
@@ -154,19 +161,8 @@ class PreprocessFrame(pd.DataFrame):
 
         # difference between dataset and reference alphabet
         bad_symbols = set(counts_dict) - alphabet
-        self = self.drop(counts[counts.symbols.isin(bad_symbols)].index.drop_duplicates(), axis=0)
-
-    def counts_to_df(self, column: str = 'description') -> pd.DataFrame:
-        '''Return dataframe with symbols counts in "column"'''
-
-        counts = pd.DataFrame(self[column].str.split('').explode())
-        counts = counts.join(counts[column].value_counts(), on=column, rsuffix='1')
-        counts.rename(columns={column: 'symbols',
-                               column + '1': 'counts', },
-                      inplace=True)
-        counts = counts[~counts.isin(['', ' '])].dropna()
-
-        return counts
+        self.drop(counts[counts.symbols.isin(bad_symbols)].index.drop_duplicates(), axis=0, inplace=True)
+        self = self.copy()
 
     def train_test_val_split(self, test_size: float, val_size: float,
                              column: str = 'description', *args, **kwargs):
@@ -190,18 +186,20 @@ class PreprocessFrame(pd.DataFrame):
 class Dataset(PrefetchDataset):
 
     def __init__(self, df: PreprocessFrame, test_size: float, val_size: float,
-                 batch_size: int = 16, img_height=100, img_width=600,
-                 max_length=None, shuffle_buffer: int = 1024,
-                 prefetch: int = tf.data.experimental.AUTOTUNE) -> None:
+                 batch_size: int = 16, img_height=100, img_width=600, aug_df=None,
+                 max_length=None, shuffle_buffer: int = 1024, train_test_split=True,
+                 prefetch: int = tf.data.experimental.AUTOTUNE, *args, **kwargs) -> None:
 
         self.df = df
         # Constants
         self.img_height = img_height if img_height else self.df.height.max()
         self.img_width = img_width if img_width else self.df.width.max()
         self.max_length = max_length if max_length else self.df.description.str.len().max()
+        self.train_test_split = train_test_split
+        self.aug_df = aug_df if aug_df else None
 
-        self.get_dataset(batch_size=batch_size, shuffle_buffer=shuffle_buffer,
-                         prefetch=prefetch, test_size=test_size, val_size=val_size)
+        self.get_dataset(batch_size=batch_size, shuffle_buffer=shuffle_buffer, prefetch=prefetch,
+                         test_size=test_size, val_size=val_size, *args, **kwargs)
 
     def get_dataset(self, batch_size: int, test_size: float,
                     shuffle_buffer: int, prefetch: int,
@@ -229,10 +227,24 @@ class Dataset(PrefetchDataset):
 
         self.blank_index = self.char_to_num(tf.strings.unicode_split('#', input_encoding="UTF-8")).numpy()[0]
 
-        train, test, val = df.train_test_val_split(test_size=test_size,
-                                                   val_size=val_size,
-                                                   *args, **kwargs)
-        for tmp in [train, test, val]:
+        if self.train_test_split:
+            train, test, val = df.train_test_val_split(test_size=test_size,
+                                                       val_size=val_size,
+                                                       *args, **kwargs)
+            list_df = [train, test, val]
+        else:
+            list_df = [df]
+
+        if self.aug_df:
+            if isinstance(self.aug_df, pd.DataFrame):
+                list_df[0] = pd.concat([list_df[0], self.aug_df])
+
+            elif isinstance(self.aug_df, str):
+                aug_df = list_df[0].copy()
+                aug_df.index = aug_df.index.to_series().apply(lambda x: os.path.join('aug_1', 'aug_' + x))
+                list_df[0] = pd.concat([list_df[0], aug_df])
+
+        for tmp in list_df:
             ind = tmp.index.tolist()
             random.shuffle(ind)
             tmp = tmp.loc[ind]
@@ -284,12 +296,12 @@ if __name__ == '__main__':
     ann_path = os.path.join('HKR_Dataset_Words_Public', 'ann')
     img_path = os.path.join('HKR_Dataset_Words_Public', 'img')
 
-    meta_collect(ann_path, 'data/metadata.tsv', 0)
+    meta_collect(ann_path, 'data/metadata.tsv', 1)
 
     df = PreprocessFrame(metadata='data/metadata.tsv')
     print(df)
     print(df.counts_to_df())
-    aug_path = make_augments(df, 1)
+    aug_df = make_augments(df, 1)
 
     train, test, val = Dataset(df, test_size=0.1,
                                val_size=0.05,
