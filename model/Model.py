@@ -135,7 +135,7 @@ class Model():
             padding="same",
             name="Conv2",
         )(self.x)
-        x = layers.MaxPooling2D((2, 2), name="pool2")(self.x)
+        self.x = layers.MaxPooling2D((2, 2), name="pool2")(self.x)
 
         self.x = layers.Conv2D(
             128,
@@ -171,7 +171,7 @@ class Model():
         )(self.x)
         self.output = CTCLayer(name="ctc_loss")(self.labels, self.x)
 
-    def train(self, train, val):
+    def fit(self, train, val):
         self.history = self.model.fit(
             train,
             validation_data=val,
@@ -202,10 +202,10 @@ class Model():
 
     def predict(self, batch):
 
-        batch_images =  batch['image']
+        batch_images = batch['image']
 
-        preds = self.pred_model.predict(batch_images)
-        pred_texts = self.decode_batch_predictions(preds)
+        pred = self.pred_model.predict(batch_images)
+        pred_texts = self.decode_batch_predictions(pred)
 
         return pred_texts
 
