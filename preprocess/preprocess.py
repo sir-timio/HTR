@@ -7,7 +7,7 @@ import pandas as pd
 from glob import glob
 from tqdm import tqdm
 from sklearn.model_selection import train_test_split
-from numpy import random, pad
+from numpy import random, pad, ndarray
 
 import tensorflow as tf
 from tensorflow.keras import layers
@@ -101,12 +101,9 @@ def make_augments(df: pd.DataFrame, WORKING_DIR: str,
 
     Parameters
     ----------
-    df : pd.DataFrame
 
     Returns
     -------
-    None
-
 
     Example
     -------
@@ -119,9 +116,8 @@ def make_augments(df: pd.DataFrame, WORKING_DIR: str,
         os.mkdir(aug_1)
 
     paths = [paths[i:i + 500] for i in range(0, len(paths), 500)]
-    padding = ((img_height, img_height), (img_width, img_width), (0, 0))
 
-    for path in tqdm(paths[:2]):
+    for path in tqdm(paths):
 
         seq = iaa.Sequential(
             [
@@ -142,14 +138,14 @@ def make_augments(df: pd.DataFrame, WORKING_DIR: str,
             random_order=True
         )
 
-        img = [pad(imageio.imread(i), padding, constant_values=(255, 255, 255)) for i in path]
+        img = [imageio.imread(i) for i in path]
 
         ls = seq(images=img)
         for i in range(len(path)):
             _, name = os.path.split(path[i])
             name = os.path.join(aug_1, 'aug_' + name)
             cv2.imwrite(name, ls[i])
-    print(path)
+
     aug_df = df.copy()
     aug_df.index = aug_df.index.to_series().apply(lambda x: os.path.join(os.path.split(aug_1)[-1], 'aug_' + x))
     aug_df.to_csv(os.path.join(WORKING_DIR, 'metadata', 'augmeta.tsv'), sep='\t')
@@ -166,8 +162,7 @@ class PreprocessFrame(pd.DataFrame):
 
         super().__init__(self.__initial_start(metadata), *args, **kwargs)
 
-        self.__rework(rem_str, subs_str)
-        self = self[(self.width <= img_width) & (self.height <= img_height)]
+        self.__rework(rem_str, subs_str, img_height, img_width)
 
     def __initial_start(self, x):
         """
@@ -178,11 +173,8 @@ class PreprocessFrame(pd.DataFrame):
         Parameters
         ----------
 
-
         Returns
         -------
-        None
-
 
         Example
         -------
@@ -217,11 +209,8 @@ class PreprocessFrame(pd.DataFrame):
         Parameters
         ----------
 
-
         Returns
         -------
-        None
-
 
         Example
         -------
@@ -237,7 +226,8 @@ class PreprocessFrame(pd.DataFrame):
 
         return counts
 
-    def __rework(self, rem_str: str, subs_str: str) -> None:
+    def __rework(self, rem_str: str, subs_str: str,
+                 img_height: int, img_width: int,) -> None:
         """
         All code were made for HKR For Handwritten Kazakh & Russian Database
         (https://github.com/abdoelsayed2016/HKR_Dataset)
@@ -246,11 +236,8 @@ class PreprocessFrame(pd.DataFrame):
         Parameters
         ----------
 
-
         Returns
         -------
-        None
-
 
         Example
         -------
@@ -281,7 +268,9 @@ class PreprocessFrame(pd.DataFrame):
         # difference between dataset and reference alphabet
         bad_symbols = set(counts_dict) - alphabet
         self.drop(counts[counts.symbols.isin(bad_symbols)].index.drop_duplicates(), axis=0, inplace=True)
-        self = self.copy()
+        self['width'] = self['width'].astype(int)
+        self['height'] = self['height'].astype(int)
+        self.drop(self[(self['width'] > img_width) | (self['height'] > img_height)].index, axis=0, inplace=True)
 
     def train_test_val_split(self, test_size: float, val_size: float,
                              column: str = 'description', *args, **kwargs):
@@ -293,11 +282,8 @@ class PreprocessFrame(pd.DataFrame):
         Parameters
         ----------
 
-
         Returns
         -------
-        None
-
 
         Example
         -------
@@ -342,7 +328,7 @@ class Dataset:
         return self.iterator_
 
     def __repr__(self):
-        return str("<class 'preprocess.Dataset generator'>")
+        return self
 
     def __get_dataset(self, batch_size: int, test_size: float, train_test_split: bool,
                       shuffle_buffer: int, prefetch: int, aug_df: pd.DataFrame,
@@ -355,11 +341,8 @@ class Dataset:
         Parameters
         ----------
 
-
         Returns
         -------
-        None
-
 
         Example
         -------
@@ -437,11 +420,8 @@ class Dataset:
         Parameters
         ----------
 
-
         Returns
         -------
-        None
-
 
         Example
         -------
@@ -459,7 +439,7 @@ class Dataset:
 
         # 4. Resize to the desired size
         img = 1 - img
-        img = tf.image.resize_with_crop_or_pad(img, self.img_height, self.img_width)
+        img = tf.image.resize_with_pad(img, self.img_height, self.img_width)
         img = 0.5 - img
 
         # 5. Transpose the image because we want the time
@@ -504,15 +484,16 @@ def main():
         aug_df.index = aug_df.index.to_series().apply(lambda x: os.path.join('aug_1', 'aug_' + x))
 
     # split data
-    train, test, val = list(Dataset(df, aug_df=aug_df,
-                                    test_size=0.1,
-                                    val_size=0.05,
-                                    img_path=img_path,
-                                    img_height=img_height,
-                                    img_width=img_width,
-                                    WORKING_DIR=WORKING_DIR,
-                                    shuffle=True,
-                                    random_state=12))
+    dataset = Dataset(df, aug_df=aug_df,
+                      test_size=0.1,
+                      val_size=0.05,
+                      img_path=img_path,
+                      img_height=img_height,
+                      img_width=img_width,
+                      WORKING_DIR=WORKING_DIR,
+                      shuffle=True,
+                      random_state=12)
+    train, test, val = list(dataset)
     print(train)
 
 
