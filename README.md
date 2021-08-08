@@ -11,9 +11,9 @@ used dataset: https://github.com/abdoelsayed2016/HKR_Dataset
 ```bash
 docker build -t mts/test .
 ```
-- than type in terminal:
+- than type in terminal (change path to your local path to MTS repo):
 ```bash
-docker run -it -p 8888:8888 -v /mnt/d/python/MTS:/home/mts/mnt mts/test
+docker run -it -p 8888:8888 -v /path/to/MTS/homework/repository:/home/mts/mnt mts/test
 ```
 - now you can use it like linux
 - before working with tensorflow and MTS homework - activate env (in progress auto activation):
