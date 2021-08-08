@@ -16,14 +16,28 @@ from tensorflow.python.data.ops.dataset_ops import PrefetchDataset
 import imgaug.augmenters as iaa
 import imageio
 
+WORKING_DIR = '/home/mts'
 
 def meta_collect(ann_path: str, result_file: str,
-                 ready: int = 1, sep: str = '\t') -> None:
-    '''collect metadata for all images to "result_file"
-    from json files in "ann_path" (execution time: about 5 mins)'''
+                 sep: str = '\t') -> None:
+    '''
+    collect metadata for all images from json files
 
-    if not ready:
-        return
+    execution time: about 5 mins
+
+    Parameters
+    ----------
+    ann_path : str
+        Path to annotation json files
+    result file : str
+        Path to save metadata file
+    start : int or bool, optional
+
+
+    Returns
+    -------
+    None
+    '''
 
     with open(result_file, 'w', encoding='utf-8') as f:
         f.write(sep.join(['width', 'height', 'description',
@@ -43,14 +57,11 @@ def meta_collect(ann_path: str, result_file: str,
 
 
 def make_augments(df: pd.DataFrame,
-                  ready: int = 1,
-                  img_path: str = os.path.join('HKR_Dataset_Words_Public', 'img'),
-                  ) -> str:
+                  start: int = 1,
+                  img_path: str = os.path.join(WORKING_DIR, 'HKR_Dataset_Words_Public', 'img'),
+                  ) -> pd.DataFrame:
     paths = df.index.to_series().apply(lambda x: os.path.join(img_path, x) + '.jpg')
-    aug_df = pd.DataFrame(df[['description']])
     aug_1 = os.path.join(img_path, 'aug_1')
-    if not ready:
-        return aug_1
 
     if not os.path.exists(aug_1):
         os.mkdir(aug_1)
@@ -79,14 +90,14 @@ def make_augments(df: pd.DataFrame,
     for path in tqdm(paths):
         img = [imageio.imread(i) for i in path]
         ls = seq(images=img)
-        aug_df = aug_df.copy()
         for i in range(len(path)):
             _, name = os.path.split(path[i])
-            ind = os.path.splitext(name)[0]
-            name = os.path.join(aug_1, f'aug_' + name)
+            name = os.path.join(aug_1, 'aug_' + name)
             cv2.imwrite(name, ls[i])
-            aug_df[os.path.join('aug_1', 'aug_' + ind), 'description'] = df.loc[ind, 'description']
-    aug_df.tocsv('data/augmeta.tsv', sep='\t')
+    aug_df = df.copy()
+    aug_df.index = aug_df.index.to_series().apply(lambda x: os.path.join(os.split(aug_1)[-1], 'aug_' + x))
+    aug_df.tocsv(os.path.join(WORKING_DIR, 'metadata', 'augmeta.tsv'), sep='\t')
+
     return aug_df.copy()
 
 
@@ -183,7 +194,7 @@ class PreprocessFrame(pd.DataFrame):
         return PreprocessFrame(train), PreprocessFrame(test), PreprocessFrame(val)
 
 
-class Dataset(PrefetchDataset):
+class Dataset:
 
     def __init__(self, df: PreprocessFrame, test_size: float, val_size: float,
                  batch_size: int = 16, img_height=100, img_width=600, aug_df=None,
@@ -196,13 +207,17 @@ class Dataset(PrefetchDataset):
         self.img_width = img_width if img_width else self.df.width.max()
         self.max_length = max_length if max_length else self.df.description.str.len().max()
         self.train_test_split = train_test_split
-        self.aug_df = aug_df if aug_df else None
+        self.aug_df = aug_df if isinstance(aug_df, (pd.DataFrame, str)) else None
 
-        self.get_dataset(batch_size=batch_size, shuffle_buffer=shuffle_buffer, prefetch=prefetch,
-                         test_size=test_size, val_size=val_size, *args, **kwargs)
+        self.iterator_ = self.get_dataset(batch_size=batch_size, shuffle_buffer=shuffle_buffer, prefetch=prefetch,
+                                          test_size=test_size, val_size=val_size, aug_df=aug_df, *args, **kwargs)
+
+    def __iter__(self):
+        print(self.iterator_)
+        return self.iterator_
 
     def get_dataset(self, batch_size: int, test_size: float,
-                    shuffle_buffer: int, prefetch: int,
+                    shuffle_buffer: int, prefetch: int, aug_df: pd.DataFrame,
                     val_size: float, *args, **kwargs) -> tf.data.Dataset:
         """Function for creating tf dataset"""
 
@@ -213,7 +228,7 @@ class Dataset(PrefetchDataset):
         counts = counts.symbols.unique().tolist() + [' ', '#']
 
         vocab = pd.Series(counts).apply(lambda x: x.encode('utf8'))
-
+        pd.Series(counts).to_csv(os.path.join(WORKING_DIR, 'metadata', 'symbols.txt'))
         self.char_to_num = layers.experimental.preprocessing.StringLookup(
             vocabulary=vocab,
             mask_token=None,
@@ -235,16 +250,16 @@ class Dataset(PrefetchDataset):
         else:
             list_df = [df]
 
-        if self.aug_df:
-            if isinstance(self.aug_df, pd.DataFrame):
-                list_df[0] = pd.concat([list_df[0], self.aug_df])
+        if isinstance(self.aug_df, pd.DataFrame):
+            list_df[0] = pd.concat([list_df[0], self.aug_df])
 
-            elif isinstance(self.aug_df, str):
-                aug_df = list_df[0].copy()
-                aug_df.index = aug_df.index.to_series().apply(lambda x: os.path.join('aug_1', 'aug_' + x))
-                list_df[0] = pd.concat([list_df[0], aug_df])
+        elif isinstance(self.aug_df, str) and self.aug_df:
+            self.aug_df = list_df[0].copy()
+            self.aug_df.index = self.aug_df.index.to_series().apply(lambda x: os.path.join('aug_1', 'aug_' + x))
+            list_df[0] = pd.concat([list_df[0], self.aug_df])
 
         for tmp in list_df:
+            tmp = tmp.copy()
             ind = tmp.index.tolist()
             random.shuffle(ind)
             tmp = tmp.loc[ind]
@@ -261,7 +276,7 @@ class Dataset(PrefetchDataset):
                 .prefetch(prefetch)
             )
 
-            yield super().__init__(tmp, prefetch)
+            yield tmp
 
     def encode_single_sample(self, img_path: str, label: str) -> dict:
         """Function for processing one image from tf dataset"""
@@ -293,19 +308,25 @@ class Dataset(PrefetchDataset):
 
 
 if __name__ == '__main__':
-    ann_path = os.path.join('HKR_Dataset_Words_Public', 'ann')
-    img_path = os.path.join('HKR_Dataset_Words_Public', 'img')
+    ann_path = os.path.join(WORKING_DIR, 'HKR_Dataset_Words_Public', 'ann')
+    img_path = os.path.join(WORKING_DIR, 'HKR_Dataset_Words_Public', 'img')
 
-    meta_collect(ann_path, 'data/metadata.tsv', 1)
+    meta_collect(ann_path, os.path.join(WORKING_DIR, 'metadata', 'metadata.tsv'))
 
-    df = PreprocessFrame(metadata='data/metadata.tsv')
+    df = PreprocessFrame(metadata=os.path.join(WORKING_DIR, 'metadata', 'metadata.tsv'))
     print(df)
     print(df.counts_to_df())
-    aug_df = make_augments(df, 1)
-
-    train, test, val = Dataset(df, test_size=0.1,
-                               val_size=0.05,
-                               shuffle=True,
-                               random_state=12)
-    print(train.shape, test.shape, val.shape)
-    cv2.imshow(list(train.take(1))[0]['image'])
+    aug_df = 0
+    aug_df = make_augments(df)
+    if not aug_df:
+        aug_df = df.copy()
+        aug_df.index = aug_df.index.to_series().apply(lambda x: os.path.join('aug_1', 'aug_' + x))
+    print(aug_df)
+    train, test, val = list(Dataset(df, aug_df=aug_df,
+                                    test_size=0.1,
+                                    val_size=0.05,
+                                    shuffle=True,
+                                    random_state=12))
+    print(dir(train))
+    print(train, test, val)
+    print(len(list(train.take(1).as_numpy_iterator())))
