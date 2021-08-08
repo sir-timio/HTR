@@ -1,26 +1,29 @@
-import pandas as pd
-from numpy import copy
+from warnings import filterwarnings
 import json
 import os
-import glob
 import string
 import cv2
+import pandas as pd
+from glob import glob
 from tqdm import tqdm
 from sklearn.model_selection import train_test_split
-from numpy import random
+from numpy import random, pad
 
 import tensorflow as tf
 from tensorflow.keras import layers
-from tensorflow.python.data.ops.dataset_ops import PrefetchDataset
 
 import imgaug.augmenters as iaa
 import imageio
 
-WORKING_DIR = '/home/mts'
+filterwarnings('ignore')
+
 
 def meta_collect(ann_path: str, result_file: str,
                  sep: str = '\t') -> None:
-    '''
+    """
+    All code were made for HKR For Handwritten Kazakh & Russian Database
+    (https://github.com/abdoelsayed2016/HKR_Dataset)
+
     collect metadata for all images from json files
 
     execution time: about 5 mins
@@ -28,22 +31,53 @@ def meta_collect(ann_path: str, result_file: str,
     Parameters
     ----------
     ann_path : str
-        Path to annotation json files
+        Path to directory with annotation json files
     result file : str
         Path to save metadata file
-    start : int or bool, optional
-
+    sep : str, default = '\t'
+        separator for metadata file
+        (see pandas.DataFrame kwarg 'sep')
 
     Returns
     -------
     None
-    '''
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> import json
+    >>> import preprocess
+    >>> with open(sample_json, 'r') as f:
+    ...     print(json.load(f))
+    ...
+    {'size': {'width': 495, 'height': 64}, 'moderation': {'isModerated': 1,
+    'moderatedBy': 'Norlist', 'predicted': ''}, 'description': 'Шёл человек.',
+    'name': '0_0_0'}
+    >>> preprocess.meta_collect(ann_path=annotation_path,
+                                result_file=result_metafile,
+                                sep='\t')
+    >>> pd.read_csv(result_metafile, sep='\t')
+             width  height     description  isModerated moderatedBy  predicted
+    0_0_0      495      64    Шёл человек.            1     Norlist        NaN
+    0_0_1      494      65     Шёл человек            1     Norlist        NaN
+    0_0_10     489      73     Шёл человек            1     Norlist        NaN
+    0_0_11     406      46    Шёл человек.            1     Norlist        NaN
+    0_0_12     379      76     Шёл человек            1     Norlist        NaN
+    ...        ...     ...             ...          ...         ...        ...
+    9_9_875    543      94  Вид постоялого            1     Norlist        NaN
+    9_9_877    462      73  Вид постоялого            1     Norlist        NaN
+    9_9_878    595      83  Вид постоялого            1     Norlist        NaN
+    9_9_879    532      72  Вид постоялого            1     Norlist        NaN
+    9_9_880    538      72  Вид постоялого            1     Norlist        NaN
+
+    [64943 rows x 6 columns]
+    """
 
     with open(result_file, 'w', encoding='utf-8') as f:
         f.write(sep.join(['width', 'height', 'description',
                           'isModerated', 'moderatedBy', 'predicted']) + '\n')
 
-        for file in tqdm(glob.glob(os.path.join(ann_path, '*.json'))):
+        for file in tqdm(glob(os.path.join(ann_path, '*.json'))):
 
             with open(file, encoding='utf-8') as js:
                 tmp = json.load(js)
@@ -56,49 +90,72 @@ def meta_collect(ann_path: str, result_file: str,
                 print(tmp['description'])
 
 
-def make_augments(df: pd.DataFrame,
-                  start: int = 1,
-                  img_path: str = os.path.join(WORKING_DIR, 'HKR_Dataset_Words_Public', 'img'),
+def make_augments(df: pd.DataFrame, WORKING_DIR: str,
+                  img_path: str, img_width: int, img_height: int,
                   ) -> pd.DataFrame:
+    """
+    All code were made for HKR For Handwritten Kazakh & Russian Database
+    (https://github.com/abdoelsayed2016/HKR_Dataset)
+
+    make augments for images from "df" to path "aug" in "img_path"
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+
+    Returns
+    -------
+    None
+
+
+    Example
+    -------
+
+    """
     paths = df.index.to_series().apply(lambda x: os.path.join(img_path, x) + '.jpg')
     aug_1 = os.path.join(img_path, 'aug_1')
 
     if not os.path.exists(aug_1):
         os.mkdir(aug_1)
 
-    seq = iaa.Sequential(
-        [
-
-            iaa.Sometimes(0.4, iaa.GaussianBlur(3.0)),
-
-            iaa.Sometimes(0.3, iaa.AveragePooling(2)),
-            iaa.Sometimes(0.2, iaa.Emboss(alpha=(0.0, 1.0), strength=(0.75, 1.25))),
-            iaa.Sometimes(0.4, iaa.GammaContrast((0.5, 1.0))),
-            iaa.Invert(0.05, per_channel=True),
-            iaa.Sometimes(0.3, iaa.CoarseDropout((0.0, 0.05), size_percent=(0.02, 0.25))),
-
-            iaa.ElasticTransformation(alpha=(0.5, 3.5), sigma=0.25),
-
-            iaa.PerspectiveTransform(scale=(0.02, 0.05)),
-
-            iaa.Sometimes(0.2, iaa.SaltAndPepper(0.05)),
-        ],
-        random_order=True
-    )
-
     paths = [paths[i:i + 500] for i in range(0, len(paths), 500)]
-    for path in tqdm(paths):
-        img = [imageio.imread(i) for i in path]
+    padding = ((img_height, img_height), (img_width, img_width), (0, 0))
+
+    for path in tqdm(paths[:2]):
+
+        seq = iaa.Sequential(
+            [
+
+                iaa.Sometimes(0.4, iaa.GaussianBlur(3.0)),
+
+                iaa.Sometimes(0.4, iaa.AveragePooling(3)),
+                iaa.Sometimes(0.4, iaa.Emboss(alpha=(0.0, 1.0), strength=(0.5, 1.5))),
+                iaa.Sometimes(0.4, iaa.GammaContrast((0.5, 1.0))),
+                iaa.Invert(0.05, per_channel=True),
+                iaa.Sometimes(0.4, iaa.CoarseDropout((0.0, 0.05), size_percent=(0.02, 0.25))),
+                iaa.Sometimes(0.4, iaa.SaltAndPepper(0.1)),
+
+                iaa.ElasticTransformation(alpha=(0.5, 3.5), sigma=0.25),
+
+                iaa.PerspectiveTransform(scale=(0.02, 0.1)),
+            ],
+            random_order=True
+        )
+
+        img = [pad(imageio.imread(i), padding, constant_values=(255, 255, 255)) for i in path]
+
         ls = seq(images=img)
         for i in range(len(path)):
             _, name = os.path.split(path[i])
             name = os.path.join(aug_1, 'aug_' + name)
             cv2.imwrite(name, ls[i])
+    print(path)
     aug_df = df.copy()
-    aug_df.index = aug_df.index.to_series().apply(lambda x: os.path.join(os.split(aug_1)[-1], 'aug_' + x))
-    aug_df.tocsv(os.path.join(WORKING_DIR, 'metadata', 'augmeta.tsv'), sep='\t')
+    aug_df.index = aug_df.index.to_series().apply(lambda x: os.path.join(os.path.split(aug_1)[-1], 'aug_' + x))
+    aug_df.to_csv(os.path.join(WORKING_DIR, 'metadata', 'augmeta.tsv'), sep='\t')
 
-    return aug_df.copy()
+    return PreprocessFrame(metadata=aug_df.copy(),
+                           img_height=img_height, img_width=img_width)
 
 
 class PreprocessFrame(pd.DataFrame):
@@ -113,7 +170,24 @@ class PreprocessFrame(pd.DataFrame):
         self = self[(self.width <= img_width) & (self.height <= img_height)]
 
     def __initial_start(self, x):
-        '''Function for openning different extensions table files'''
+        """
+        All code were made for HKR For Handwritten Kazakh & Russian Database
+        (https://github.com/abdoelsayed2016/HKR_Dataset)
+
+
+        Parameters
+        ----------
+
+
+        Returns
+        -------
+        None
+
+
+        Example
+        -------
+
+        """
 
         if isinstance(x, (list, tuple)):
             return {'x': x[0], 'y': x[1]}
@@ -135,7 +209,24 @@ class PreprocessFrame(pd.DataFrame):
                 return 1
 
     def counts_to_df(self, column: str = 'description') -> pd.DataFrame:
-        '''Return dataframe with symbols counts in "column"'''
+        """
+        All code were made for HKR For Handwritten Kazakh & Russian Database
+        (https://github.com/abdoelsayed2016/HKR_Dataset)
+
+
+        Parameters
+        ----------
+
+
+        Returns
+        -------
+        None
+
+
+        Example
+        -------
+
+        """
 
         counts = pd.DataFrame(self[column].str.split('').explode())
         counts = counts.join(counts[column].value_counts(), on=column, rsuffix='1')
@@ -147,7 +238,24 @@ class PreprocessFrame(pd.DataFrame):
         return counts
 
     def __rework(self, rem_str: str, subs_str: str) -> None:
-        '''/df'''
+        """
+        All code were made for HKR For Handwritten Kazakh & Russian Database
+        (https://github.com/abdoelsayed2016/HKR_Dataset)
+
+
+        Parameters
+        ----------
+
+
+        Returns
+        -------
+        None
+
+
+        Example
+        -------
+
+        """
 
         if 'predicted' in self.columns:
             self.drop('predicted', axis=1, inplace=True)
@@ -177,7 +285,24 @@ class PreprocessFrame(pd.DataFrame):
 
     def train_test_val_split(self, test_size: float, val_size: float,
                              column: str = 'description', *args, **kwargs):
-        ''' '''
+        """
+        All code were made for HKR For Handwritten Kazakh & Russian Database
+        (https://github.com/abdoelsayed2016/HKR_Dataset)
+
+
+        Parameters
+        ----------
+
+
+        Returns
+        -------
+        None
+
+
+        Example
+        -------
+
+        """
 
         counts = self.counts_to_df(column)
         counts.counts = 1
@@ -196,8 +321,8 @@ class PreprocessFrame(pd.DataFrame):
 
 class Dataset:
 
-    def __init__(self, df: PreprocessFrame, test_size: float, val_size: float,
-                 batch_size: int = 16, img_height=100, img_width=600, aug_df=None,
+    def __init__(self, df: PreprocessFrame, test_size: float, val_size: float, img_path: str,
+                 WORKING_DIR: str, batch_size: int = 16, img_height=100, img_width=600, aug_df=None,
                  max_length=None, shuffle_buffer: int = 1024, train_test_split=True,
                  prefetch: int = tf.data.experimental.AUTOTUNE, *args, **kwargs) -> None:
 
@@ -206,20 +331,40 @@ class Dataset:
         self.img_height = img_height if img_height else self.df.height.max()
         self.img_width = img_width if img_width else self.df.width.max()
         self.max_length = max_length if max_length else self.df.description.str.len().max()
-        self.train_test_split = train_test_split
         self.aug_df = aug_df if isinstance(aug_df, (pd.DataFrame, str)) else None
 
-        self.iterator_ = self.get_dataset(batch_size=batch_size, shuffle_buffer=shuffle_buffer, prefetch=prefetch,
-                                          test_size=test_size, val_size=val_size, aug_df=aug_df, *args, **kwargs)
+        self.iterator_ = self.__get_dataset(batch_size=batch_size, shuffle_buffer=shuffle_buffer, prefetch=prefetch,
+                                            test_size=test_size, val_size=val_size, aug_df=aug_df,
+                                            train_test_split=train_test_split,
+                                            img_path=img_path, WORKING_DIR=WORKING_DIR, *args, **kwargs)
 
     def __iter__(self):
-        print(self.iterator_)
         return self.iterator_
 
-    def get_dataset(self, batch_size: int, test_size: float,
-                    shuffle_buffer: int, prefetch: int, aug_df: pd.DataFrame,
-                    val_size: float, *args, **kwargs) -> tf.data.Dataset:
-        """Function for creating tf dataset"""
+    def __repr__(self):
+        return str("<class 'preprocess.Dataset generator'>")
+
+    def __get_dataset(self, batch_size: int, test_size: float, train_test_split: bool,
+                      shuffle_buffer: int, prefetch: int, aug_df: pd.DataFrame,
+                      val_size: float, img_path: str, WORKING_DIR: str, *args, **kwargs) -> tf.data.Dataset:
+        """
+        All code were made for HKR For Handwritten Kazakh & Russian Database
+        (https://github.com/abdoelsayed2016/HKR_Dataset)
+
+
+        Parameters
+        ----------
+
+
+        Returns
+        -------
+        None
+
+
+        Example
+        -------
+
+        """
 
         # Creating mappers
 
@@ -228,7 +373,12 @@ class Dataset:
         counts = counts.symbols.unique().tolist() + [' ', '#']
 
         vocab = pd.Series(counts).apply(lambda x: x.encode('utf8'))
-        pd.Series(counts).to_csv(os.path.join(WORKING_DIR, 'metadata', 'symbols.txt'))
+
+        with open(os.path.join(WORKING_DIR, 'metadata', 'symbols.txt'), 'w') as f:
+            for sym in pd.Series(counts).iloc[:-1]:
+                f.write(sym + '\n')
+            f.write(pd.Series(counts).iloc[-1])
+
         self.char_to_num = layers.experimental.preprocessing.StringLookup(
             vocabulary=vocab,
             mask_token=None,
@@ -242,13 +392,13 @@ class Dataset:
 
         self.blank_index = self.char_to_num(tf.strings.unicode_split('#', input_encoding="UTF-8")).numpy()[0]
 
-        if self.train_test_split:
-            train, test, val = df.train_test_val_split(test_size=test_size,
-                                                       val_size=val_size,
-                                                       *args, **kwargs)
+        if train_test_split:
+            train, test, val = self.df.train_test_val_split(test_size=test_size,
+                                                            val_size=val_size,
+                                                            *args, **kwargs)
             list_df = [train, test, val]
         else:
-            list_df = [df]
+            list_df = [self.df]
 
         if isinstance(self.aug_df, pd.DataFrame):
             list_df[0] = pd.concat([list_df[0], self.aug_df])
@@ -270,7 +420,7 @@ class Dataset:
 
             tmp = (
                 tmp.map(
-                    self.encode_single_sample, num_parallel_calls=tf.data.experimental.AUTOTUNE
+                    self.__encode_single_sample, num_parallel_calls=tf.data.experimental.AUTOTUNE
                 )
                 .batch(batch_size)
                 .prefetch(prefetch)
@@ -278,8 +428,25 @@ class Dataset:
 
             yield tmp
 
-    def encode_single_sample(self, img_path: str, label: str) -> dict:
-        """Function for processing one image from tf dataset"""
+    def __encode_single_sample(self, img_path: str, label: str) -> dict:
+        """
+        All code were made for HKR For Handwritten Kazakh & Russian Database
+        (https://github.com/abdoelsayed2016/HKR_Dataset)
+
+
+        Parameters
+        ----------
+
+
+        Returns
+        -------
+        None
+
+
+        Example
+        -------
+
+        """
 
         # 1. Read
         img = tf.io.read_file(img_path)
@@ -307,26 +474,47 @@ class Dataset:
         return {"image": img, "label": label}
 
 
-if __name__ == '__main__':
+def main():
+
+    # image sizes
+    img_width = 600
+    img_height = 100
+
+    # default paths
+    WORKING_DIR = os.path.join('/home', 'mts')
     ann_path = os.path.join(WORKING_DIR, 'HKR_Dataset_Words_Public', 'ann')
     img_path = os.path.join(WORKING_DIR, 'HKR_Dataset_Words_Public', 'img')
 
-    meta_collect(ann_path, os.path.join(WORKING_DIR, 'metadata', 'metadata.tsv'))
+    # collect metadata
+    # meta_collect(ann_path, os.path.join(WORKING_DIR, 'metadata', 'metadata.tsv'))
 
-    df = PreprocessFrame(metadata=os.path.join(WORKING_DIR, 'metadata', 'metadata.tsv'))
-    print(df)
-    print(df.counts_to_df())
-    aug_df = 0
-    aug_df = make_augments(df)
-    if not aug_df:
+    # get preprocessed metadata dataframe
+    df = PreprocessFrame(metadata=os.path.join(WORKING_DIR, 'metadata', 'metadata.tsv'),
+                         img_height=img_height, img_width=img_width)
+    print(df.shape)
+
+    # Make augments file (if they exists: comment or delete line)
+    aug_df = None
+    aug_df = make_augments(df=df, img_path=img_path, WORKING_DIR=WORKING_DIR,
+                           img_height=img_height, img_width=img_width)
+
+    # get augments metadata dataframe from original dataframe if not starting make_augments
+    if not isinstance(aug_df, pd.DataFrame):
         aug_df = df.copy()
         aug_df.index = aug_df.index.to_series().apply(lambda x: os.path.join('aug_1', 'aug_' + x))
-    print(aug_df)
+
+    # split data
     train, test, val = list(Dataset(df, aug_df=aug_df,
                                     test_size=0.1,
                                     val_size=0.05,
+                                    img_path=img_path,
+                                    img_height=img_height,
+                                    img_width=img_width,
+                                    WORKING_DIR=WORKING_DIR,
                                     shuffle=True,
                                     random_state=12))
-    print(dir(train))
-    print(train, test, val)
-    print(len(list(train.take(1).as_numpy_iterator())))
+    print(train)
+
+
+if __name__ == '__main__':
+    main()
