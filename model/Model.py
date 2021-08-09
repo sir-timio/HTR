@@ -3,7 +3,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
-from .metrics import CTCLayer
+from model.metrics import CTCLayer
 r'''
 params:
 
@@ -28,7 +28,7 @@ blank - '#'
 '''
 
 class Model():
-    def __int__(self, params):
+    def __init__(self, params):
         self.callbacks = []
         self.epochs = params['epochs']
         self.metrics = params['metrics']
@@ -124,7 +124,7 @@ class Model():
             kernel_initializer="he_normal",
             padding="same",
             name="Conv1",
-        )(self.input_img)
+        )(self.input)
         self.x = layers.MaxPooling2D((2, 2), name="pool1")(self.x)
 
         self.x = layers.Conv2D(
