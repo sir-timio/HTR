@@ -13,16 +13,18 @@ docker build -t mts/test .
 ```
 - than type in terminal (change path to your local path to MTS repo):
 ```bash
-docker run -it -p 8888:8888 -v /path/to/MTS/homework/repository:/home/mts/mnt mts/test
+docker run -it -p 8888:8888 -v /path/to/MTS/homework/repository:/home/mts mts/test
 ```
 - now you can use it like linux
-- before working with tensorflow and MTS homework - activate env (in progress auto activation):
+
+- to run script type:
 ```bash
-conda activate mts
+conda activate mts && python my_app.py
 ```
 - To open `jupyter notebook` type:
 ```bash
-jupyter notebook --port=8888 --no-browser --ip=0.0.0.0 --allow-root
+conda activate mts && jupyter notebook --port=8888 --no-browser --ip=0.0.0.0 --allow-root
 ```
 
+- Then copy link to browser and enjoy!
 

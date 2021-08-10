@@ -7,7 +7,7 @@ import pandas as pd
 from glob import glob
 from tqdm import tqdm
 from sklearn.model_selection import train_test_split
-from numpy import random, pad, ndarray
+from numpy import random
 
 import tensorflow as tf
 from tensorflow.keras import layers
@@ -217,7 +217,7 @@ class PreprocessFrame(pd.DataFrame):
 
         """
 
-        counts = pd.DataFrame(self[column].str.split('').explode())
+        counts = pd.DataFrame(self[column].map(list).explode())
         counts = counts.join(counts[column].value_counts(), on=column, rsuffix='1')
         counts.rename(columns={column: 'symbols',
                                column + '1': 'counts', },
@@ -466,7 +466,7 @@ def main():
     img_path = os.path.join(WORKING_DIR, 'HKR_Dataset_Words_Public', 'img')
 
     # collect metadata
-    # meta_collect(ann_path, os.path.join(WORKING_DIR, 'metadata', 'metadata.tsv'))
+    meta_collect(ann_path, os.path.join(WORKING_DIR, 'metadata', 'metadata.tsv'))
 
     # get preprocessed metadata dataframe
     df = PreprocessFrame(metadata=os.path.join(WORKING_DIR, 'metadata', 'metadata.tsv'),
@@ -483,7 +483,7 @@ def main():
         aug_df = df.copy()
         aug_df.index = aug_df.index.to_series().apply(lambda x: os.path.join('aug_1', 'aug_' + x))
 
-    # split data
+    # split data and get datasets
     dataset = Dataset(df, aug_df=aug_df,
                       test_size=0.1,
                       val_size=0.05,
