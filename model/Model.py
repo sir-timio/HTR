@@ -1,5 +1,4 @@
 import numpy as np
-
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
@@ -28,6 +27,7 @@ blank - '#'
 '''
 
 class Model():
+    
     def __init__(self, params):
         self.callbacks = []
         self.epochs = params['epochs']
@@ -44,6 +44,7 @@ class Model():
         self.max_label_len = params['max_label_len']
         self.chars_path = params['chars_path']
         self.blank = params['blank']
+        self.blank_index = params['blank_index']
 
         self.num_to_char = None
         self.char_to_num = None
@@ -169,7 +170,7 @@ class Model():
         self.x = layers.Dense(
             self.vocab_len, activation="softmax", name="dense2"
         )(self.x)
-        self.output = CTCLayer(name="ctc_loss")(self.labels, self.x)
+        self.output = CTCLayer(self.blank_index, name="ctc_loss")(self.labels, self.x)
 
     def fit(self, train, val):
         self.history = self.model.fit(
