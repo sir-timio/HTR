@@ -50,9 +50,7 @@ def meta_collect(ann_path: str, result_file: str,
     >>> with open(sample_json, 'r') as f:
     ...     print(json.load(f))
     ...
-    {'size': {'width': 495, 'height': 64}, 'moderation': {'isModerated': 1,
-    'moderatedBy': 'Norlist', 'predicted': ''}, 'description': 'Шёл человек.',
-    'name': '0_0_0'}
+    {'size': {'width': 495, 'height': 64}, 'moderation': {'isModerated': 1, 'moderatedBy': 'Norlist', 'predicted': ''}, 'description': 'Шёл человек.', 'name': '0_0_0'}
     >>> preprocess.meta_collect(ann_path=annotation_path,
                                 result_file=result_metafile,
                                 sep='\t')

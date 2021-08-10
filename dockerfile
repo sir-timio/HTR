@@ -8,5 +8,4 @@ WORKDIR /home/mts
 COPY requirements.txt .
 RUN python -m pip install -r requirements.txt
 
-CMD ["python", "-m", "jupyter", "notebook", "--port=8888", "--no-browser", "--ip=0.0.0.0", "--allow-root", "run.ipynb"]  
-# CMD ["python", "-m", "jupyter"]
+CMD ["python", "-m", "jupyter", "notebook", "--port=8888", "--no-browser", "--ip=0.0.0.0", "--allow-root"]  
