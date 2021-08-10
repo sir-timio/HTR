@@ -27,7 +27,7 @@ blank - '#'
 '''
 
 class Model():
-    
+
     def __init__(self, params):
         self.callbacks = []
         self.epochs = params['epochs']
@@ -68,7 +68,7 @@ class Model():
 
         if 'tb_log' in params['callbacks']:
             self.tb_log_path = params['tb_log_path']
-            tb_log_callback = tf.keras.callbacks.TensorBoard(log_dir="../logs/log7",
+            tb_log_callback = tf.keras.callbacks.TensorBoard(log_dir=self.tb_log_path,
                                                              update_freq=params['tb_update_freq'])
             self.callbacks.append(tb_log_callback)
 
