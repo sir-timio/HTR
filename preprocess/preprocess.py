@@ -154,8 +154,8 @@ def make_augments(df: pd.DataFrame, WORKING_DIR: str,
 
 class PreprocessFrame(pd.DataFrame):
 
-    def __init__(self, metadata: str = 'data/metadata.tsv', img_height: int = 50,
-                 rem_str: str = '', img_width: int = 300,
+    def __init__(self, metadata: str = 'data/metadata.tsv', img_height: int = 100,
+                 rem_str: str = '', img_width: int = 600,
                  subs_str: str = '', *args, **kwargs) -> None:
 
         super().__init__(self.__initial_start(metadata), *args, **kwargs)
@@ -306,8 +306,9 @@ class PreprocessFrame(pd.DataFrame):
 class Dataset:
 
     def __init__(self, df: PreprocessFrame, test_size: float, val_size: float, img_path: str,
-                 WORKING_DIR: str, batch_size: int = 16, img_height=50, img_width=300, aug_df=None,
-                 max_length=None, shuffle_buffer: int = 1024, train_test_split=True,
+                 WORKING_DIR: str, batch_size: int = 16, img_height=100, img_width=600,
+                 new_img_height=50, new_img_width=300, aug_df=None,max_length=None,
+                 shuffle_buffer: int = 1024, train_test_split=True,
                  prefetch: int = tf.data.experimental.AUTOTUNE, *args, **kwargs) -> None:
 
         self.df = df
@@ -437,7 +438,7 @@ class Dataset:
 
         # 4. Resize to the desired size
         img = 1 - img
-        img = tf.image.resize_with_pad(img, self.img_height, self.img_width)
+        img = tf.image.resize_with_pad(img, self.new_img_height, self.new_img_width)
         img = 0.5 - img
 
         # 5. Transpose the image because we want the time
@@ -455,8 +456,12 @@ class Dataset:
 def main():
 
     # image sizes
-    img_width = 300
-    img_height = 50
+    img_width = 600
+    img_height = 100
+
+    # parameters of resized images
+    new_img_width = 300
+    new_img_width = 50
 
     # default paths
     WORKING_DIR = os.path.join('/home', 'mts')
@@ -488,6 +493,8 @@ def main():
                       img_path=img_path,
                       img_height=img_height,
                       img_width=img_width,
+                      new_img_height=new_img_height,
+                      new_img_width=new_img_width,
                       WORKING_DIR=WORKING_DIR,
                       shuffle=True,
                       random_state=12)

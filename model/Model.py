@@ -48,6 +48,7 @@ class Model():
 
         self.num_to_char = None
         self.char_to_num = None
+        self.set_mapping()
 
         if 'checkpoint' in params['callbacks']:
             self.cp_path = params['checkpoint_path']
