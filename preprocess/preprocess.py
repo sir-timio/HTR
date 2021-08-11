@@ -313,11 +313,12 @@ class Dataset:
 
         self.df = df
         # Constants
-        self.img_height = img_height if img_height else self.df.height.max()
-        self.img_width = img_width if img_width else self.df.width.max()
+        self.img_height = img_height
+        self.img_width = img_width
         self.max_length = max_length if max_length else self.df.description.str.len().max()
         self.aug_df = aug_df if isinstance(aug_df, (pd.DataFrame, str)) else None
-
+        self.new_img_height = new_img_height
+        self.new_img_width = new_img_width
         self.iterator_ = self.__get_dataset(batch_size=batch_size, shuffle_buffer=shuffle_buffer, prefetch=prefetch,
                                             test_size=test_size, val_size=val_size, aug_df=aug_df,
                                             train_test_split=train_test_split,
