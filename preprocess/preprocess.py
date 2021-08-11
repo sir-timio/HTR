@@ -461,7 +461,7 @@ def main():
 
     # parameters of resized images
     new_img_width = 300
-    new_img_width = 50
+    new_img_height = 50
 
     # default paths
     WORKING_DIR = os.path.join('/home', 'mts')
