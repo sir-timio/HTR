@@ -1,9 +1,8 @@
 import numpy as np
-
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
-from .metrics import CTCLayer
+from model.metrics import CTCLayer
 r'''
 params:
 
@@ -28,7 +27,8 @@ blank - '#'
 '''
 
 class Model():
-    def __int__(self, params):
+
+    def __init__(self, params):
         self.callbacks = []
         self.epochs = params['epochs']
         self.metrics = params['metrics']
@@ -44,9 +44,11 @@ class Model():
         self.max_label_len = params['max_label_len']
         self.chars_path = params['chars_path']
         self.blank = params['blank']
+        self.blank_index = params['blank_index']
 
         self.num_to_char = None
         self.char_to_num = None
+        self.set_mapping()
 
         if 'checkpoint' in params['callbacks']:
             self.cp_path = params['checkpoint_path']
@@ -67,7 +69,7 @@ class Model():
 
         if 'tb_log' in params['callbacks']:
             self.tb_log_path = params['tb_log_path']
-            tb_log_callback = tf.keras.callbacks.TensorBoard(log_dir="../logs/log7",
+            tb_log_callback = tf.keras.callbacks.TensorBoard(log_dir=self.tb_log_path,
                                                              update_freq=params['tb_update_freq'])
             self.callbacks.append(tb_log_callback)
 
@@ -124,7 +126,7 @@ class Model():
             kernel_initializer="he_normal",
             padding="same",
             name="Conv1",
-        )(self.input_img)
+        )(self.input)
         self.x = layers.MaxPooling2D((2, 2), name="pool1")(self.x)
 
         self.x = layers.Conv2D(
@@ -169,7 +171,7 @@ class Model():
         self.x = layers.Dense(
             self.vocab_len, activation="softmax", name="dense2"
         )(self.x)
-        self.output = CTCLayer(name="ctc_loss")(self.labels, self.x)
+        self.output = CTCLayer(self.blank_index, name="ctc_loss")(self.labels, self.x)
 
     def fit(self, train, val):
         self.history = self.model.fit(

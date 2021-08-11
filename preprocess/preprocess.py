@@ -306,17 +306,19 @@ class PreprocessFrame(pd.DataFrame):
 class Dataset:
 
     def __init__(self, df: PreprocessFrame, test_size: float, val_size: float, img_path: str,
-                 WORKING_DIR: str, batch_size: int = 16, img_height=100, img_width=600, aug_df=None,
-                 max_length=None, shuffle_buffer: int = 1024, train_test_split=True,
+                 WORKING_DIR: str, batch_size: int = 16, img_height=100, img_width=600,
+                 new_img_height=50, new_img_width=300, aug_df=None,max_length=None,
+                 shuffle_buffer: int = 1024, train_test_split=True,
                  prefetch: int = tf.data.experimental.AUTOTUNE, *args, **kwargs) -> None:
 
         self.df = df
         # Constants
-        self.img_height = img_height if img_height else self.df.height.max()
-        self.img_width = img_width if img_width else self.df.width.max()
+        self.img_height = img_height
+        self.img_width = img_width
         self.max_length = max_length if max_length else self.df.description.str.len().max()
         self.aug_df = aug_df if isinstance(aug_df, (pd.DataFrame, str)) else None
-
+        self.new_img_height = new_img_height
+        self.new_img_width = new_img_width
         self.iterator_ = self.__get_dataset(batch_size=batch_size, shuffle_buffer=shuffle_buffer, prefetch=prefetch,
                                             test_size=test_size, val_size=val_size, aug_df=aug_df,
                                             train_test_split=train_test_split,
@@ -437,7 +439,7 @@ class Dataset:
 
         # 4. Resize to the desired size
         img = 1 - img
-        img = tf.image.resize_with_pad(img, self.img_height, self.img_width)
+        img = tf.image.resize_with_pad(img, self.new_img_height, self.new_img_width)
         img = 0.5 - img
 
         # 5. Transpose the image because we want the time
@@ -457,6 +459,10 @@ def main():
     # image sizes
     img_width = 600
     img_height = 100
+
+    # parameters of resized images
+    new_img_width = 300
+    new_img_height = 50
 
     # default paths
     WORKING_DIR = os.path.join('/home', 'mts')
@@ -488,6 +494,8 @@ def main():
                       img_path=img_path,
                       img_height=img_height,
                       img_width=img_width,
+                      new_img_height=new_img_height,
+                      new_img_width=new_img_width,
                       WORKING_DIR=WORKING_DIR,
                       shuffle=True,
                       random_state=12)
