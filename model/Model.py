@@ -94,6 +94,11 @@ class Model():
     def load_weights(self, path):
         self.model.load_weights(path)
 
+        self.pred_model = keras.models.Model(
+            self.model.get_layer(name='image').input, self.model.get_layer(name='dense2').output
+        )
+
+        
     def build(self):
         self.set_input()
         self.set_CNN()
