@@ -1,4 +1,4 @@
-# Handwritten text recognition on line level
+# Handwritten text recognition
 
 used dataset: https://github.com/abdoelsayed2016/HKR_Dataset
 
