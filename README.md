@@ -2,7 +2,7 @@
 
 used dataset: https://github.com/abdoelsayed2016/HKR_Dataset
 
-# HOW TO USE WITH DOCKER
+## HOW TO USE WITH DOCKER
 - install DOCKER on your system
 - open terminal and move to this directory
 - type in terminal (this will take several minutes):
