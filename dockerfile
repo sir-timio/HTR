@@ -4,7 +4,7 @@ RUN apt-get update && \
 	apt-get install -y libgl1
 # libgl1 - library for opencv
 
-WORKDIR /home/mts
+WORKDIR /home/htr
 COPY requirements.txt .
 RUN python -m pip install -r requirements.txt
 
