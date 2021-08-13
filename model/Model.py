@@ -80,9 +80,13 @@ class Model():
             self.callbacks.append(early_stopping)
 
     def set_mapping(self):
+        vocab = []
+        with open(self.chars_path, 'r') as file:
+            voc = file.read().splitlines()
+        
         # Mapping characters to integers
         self.char_to_num = layers.experimental.preprocessing.StringLookup(
-            vocabulary=self.chars_path, mask_token=None,
+            vocabulary=voc, mask_token=None,
         )
 
         # Mapping integers back to original characters
