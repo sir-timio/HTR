@@ -1,5 +1,6 @@
 HKR_Dataset_Words_Public/
 arxivs/
+.idea/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
