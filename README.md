@@ -1,6 +1,6 @@
 # Распознавание рукописного текста
 
-Посмотреть проект: https://nbviewer.jupyter.org/github/sir-timio/HTR/blob/main/run.ipynb
+Результат работы: https://nbviewer.jupyter.org/github/sir-timio/HTR/blob/main/run.ipynb
 
 ## Использование с помощью Docker
 
