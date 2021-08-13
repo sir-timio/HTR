@@ -43,7 +43,7 @@ docker run -it -p 8888:8888 -v /absolute/path/to/HTR:/home/htr htr/tfgpu
 HKR (https://github.com/abdoelsayed2016/HKR_Dataset) — закрытая база данных, содержащая фрагменты русского и казахского рукописного текста. Помимо 33 символов русского алфавита в наборе присутствуют 9 символов казахского алфавита.
 HKR представляет собой набор форм. Все формы были созданы с помощью LATEX и впоследствии были заполнены людьми. База данных состоит из более чем 1400 заполненных форм. Всего около 63000 предложений, более 715699 символов, написанных примерно 200 разными авторами.  
 
-EDA и предобработка данных: https://nbviewer.jupyter.org/github/sir-timio/HTR/blob/main/preprocess/Preprocess.ipynb
+EDA, предобработка данных и валидация: https://nbviewer.jupyter.org/github/sir-timio/HTR/blob/main/preprocess/Preprocess.ipynb
 
 # Дальнейшие планы
 
