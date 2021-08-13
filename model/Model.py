@@ -3,27 +3,25 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
 from model.metrics import CTCLayer
+
 r'''
 params:
 
-callbacks: list of callback names [checkpoint, csv_log, tb_log, early_stopping]
-metrics: list of metrics name [cer, wer, accuracy, ctc_loss]
-
-checkpoint_path
-csv_log_path
-tb_log_path
-  tb_update_freq: int
-
-early_stopping
-    early_stopping_patience: int
-
+callbacks: list of callback names
+metrics: list of metric names
+checkpoint_path: str path for checkpoints
+csv_log_path: str path for csv logs
+tb_log_path: str path for files to be parsed by TensorBoard
+tb_update_freq: 'batch'/'epoch'/int frequency of writing to TensorBoard
+epochs: int number of epochs
+batch_size: int size of batch
+early_stopping_patience: int early stopping patience
 input_img_shape: array(width, height, 1)
-
-vocab_len: len of vocab with blank
-restore_weights: bool
-max_label_len
-chars_path
-blank - '#'
+vocab_len: int length of vocabulary with blank
+max_label_len: int max length of labels
+chars_path: path to file that contains alphabet
+blank: str blank symbol for ctc
+blank_index: int index of blank in vocabulary
 '''
 
 class Model():
@@ -33,7 +31,6 @@ class Model():
         self.epochs = params['epochs']
         self.metrics = params['metrics']
         self.history = dict()
-        self.restore_weights = params['restore_weights']
 
         self.model = None
         self.pred_model = None
@@ -83,7 +80,7 @@ class Model():
         vocab = []
         with open(self.chars_path, 'r') as file:
             voc = file.read().splitlines()
-        
+
         # Mapping characters to integers
         self.char_to_num = layers.experimental.preprocessing.StringLookup(
             vocabulary=voc, mask_token=None,
@@ -102,7 +99,7 @@ class Model():
             self.model.get_layer(name='image').input, self.model.get_layer(name='dense2').output
         )
 
-        
+
     def build(self):
         self.set_input()
         self.set_CNN()

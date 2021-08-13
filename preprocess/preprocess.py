@@ -465,7 +465,7 @@ def main():
     new_img_height = 50
 
     # default paths
-    WORKING_DIR = os.path.join('/home', 'mts')
+    WORKING_DIR = os.path.join('/home', 'htr')
     ann_path = os.path.join(WORKING_DIR, 'HKR_Dataset_Words_Public', 'ann')
     img_path = os.path.join(WORKING_DIR, 'HKR_Dataset_Words_Public', 'img')
 
