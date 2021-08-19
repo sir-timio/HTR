@@ -353,9 +353,8 @@ class Dataset:
 
         # Mapping characters to integers
         counts = self.df.counts_to_df()
-        counts = counts.symbols.unique().tolist() + [' ', '#']
-
-        vocab = pd.Series(counts).apply(lambda x: x.encode('utf8'))
+        counts = counts.symbols.sort_values().unique().tolist() + [' ', '#']
+        vocab = pd.Series(counts).str.encode('utf8')
 
         with open(os.path.join(WORKING_DIR, 'metadata', 'symbols.txt'), 'w') as f:
             for sym in pd.Series(counts).iloc[:-1]:
