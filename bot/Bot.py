@@ -21,8 +21,6 @@ logging.basicConfig(format=u'%(filename)s [ LINE:%(lineno)+3s ]#%(levelname)+8s 
 samples = np.loadtxt('data/samples.txt', dtype=str, comments="#")
 num_samples = len(samples)
 
-LINK = 'https://api.telegram.org/bot<TOKEN>/getFile?file_id=<FILE_ID>'.replace('<TOKEN>', TOKEN)
-PATH = 'https://api.telegram.org/file/bot<TOKEN>/<FILE_PATH>'.replace('<TOKEN>', TOKEN)
 bot = Bot(token=TOKEN)
 dp = Dispatcher(bot)
 
@@ -92,15 +90,20 @@ async def process_photo_command(msg: types.Message):
     caption = prediction_process_messages[i % len(prediction_process_messages)]
     caption = caption.replace('@', label)
     img_hash = samples[i]
-    link = LINK.replace('<FILE_ID>', img_hash)
-    r = requests.get(url=link)
-    file_path = r.json()['result']['file_path']
-    file_path = PATH.replace('<FILE_PATH>', file_path)
+    file_path = get_path(img_hash)
     # use file path to download image via PIL
     #https://stackoverflow.com/questions/7391945/how-do-i-read-image-data-from-a-url-in-python
     await bot.send_photo(msg.from_user.id, img_hash,
                          caption=emojize(caption))
 
+def get_path(hash):
+    LINK = 'https://api.telegram.org/bot<TOKEN>/getFile?file_id=<FILE_ID>'.replace('<TOKEN>', TOKEN)
+    PATH = 'https://api.telegram.org/file/bot<TOKEN>/<FILE_PATH>'.replace('<TOKEN>', TOKEN)
+    link = LINK.replace('<FILE_ID>', hash)
+    r = requests.get(url=link)
+    file_path = r.json()['result']['file_path']
+    file_path = PATH.replace('<FILE_PATH>', file_path)
+    return file_path
 
 @dp.message_handler(commands=['info'])
 async def process_info_command(msg: types.Message):
@@ -112,9 +115,13 @@ async def process_info_command(msg: types.Message):
 async def echo_img(msg: types.Message):
     label = 'предсказание'
     i = random.randint(0, len(prediction_process_messages))
-    caption = prediction_process_messages[i].replace('@', label)
-    file_id = msg.photo[-1]['file_id']
-    await bot.send_photo(msg.from_user.id, file_id, caption=caption)
+    caption = prediction_process_messages[i % len(prediction_process_messages)].replace('@', label)
+    img_hash = msg.photo[-1]['file_id']
+
+    file_path = get_path(img_hash)
+    # use file path to download image via PIL
+    #https://stackoverflow.com/questions/7391945/how-do-i-read-image-data-from-a-url-in-python
+    await bot.send_photo(msg.from_user.id, img_hash, caption=caption)
 
 
 @dp.message_handler(content_types=ContentType.ANY)
