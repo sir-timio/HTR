@@ -21,7 +21,6 @@ vocab_len: int length of vocabulary with blank
 max_label_len: int max length of labels
 chars_path: path to file that contains alphabet
 blank: str blank symbol for ctc
-blank_index: int index of blank in vocabulary
 '''
 
 class Model():
@@ -41,11 +40,11 @@ class Model():
         self.max_label_len = params['max_label_len']
         self.chars_path = params['chars_path']
         self.blank = params['blank']
-        self.blank_index = params['blank_index']
+        self.blank_index = None
 
         self.num_to_char = None
         self.char_to_num = None
-        self.set_mapping()
+        self.__set_mapping()
 
         if 'checkpoint' in params['callbacks']:
             self.cp_path = params['checkpoint_path']
@@ -76,14 +75,14 @@ class Model():
             )
             self.callbacks.append(early_stopping)
 
-    def set_mapping(self):
+    def __set_mapping(self):
         vocab = []
         with open(self.chars_path, 'r') as file:
             voc = file.read().splitlines()
 
         # Mapping characters to integers
         self.char_to_num = layers.experimental.preprocessing.StringLookup(
-            vocabulary=voc, mask_token=None,
+            vocabulary=voc, mask_token=None
         )
 
         # Mapping integers back to original characters
@@ -99,12 +98,11 @@ class Model():
             self.model.get_layer(name='image').input, self.model.get_layer(name='dense2').output
         )
 
-
     def build(self):
-        self.set_input()
-        self.set_CNN()
-        self.set_RNN()
-        self.set_output()
+        self.__set_input()
+        self.__set_CNN()
+        self.__set_RNN()
+        self.__set_output()
 
         self.model = keras.models.Model(
             inputs=[self.input, self.labels], outputs=self.output, name="htr_model"
@@ -118,13 +116,13 @@ class Model():
             optimizer=opt,
         )
 
-    def set_input(self):
+    def __set_input(self):
         self.input = layers.Input(
             shape=self.input_shape, name='image', dtype='float32'
         )
         self.labels = layers.Input(name='label', shape=(None, ), dtype='float32')
 
-    def set_CNN(self):
+    def __set_CNN(self):
         self.x = layers.Conv2D(
             32,
             (5, 5),
@@ -157,7 +155,7 @@ class Model():
 
         self.x = layers.Conv2D(
             256,
-            (3, 3),
+            (2, 2),
             activation="relu",
             kernel_initializer="he_normal",
             padding="same",
@@ -169,15 +167,18 @@ class Model():
         self.x = layers.Dense(64, activation="relu", name="dense1")(self.x)
         self.x = layers.Dropout(0.2)(self.x)
 
-    def set_RNN(self):
+    def __set_RNN(self):
         self.x = layers.Bidirectional(layers.LSTM(128, return_sequences=True))(self.x)
         self.x = layers.Bidirectional(layers.LSTM(64, return_sequences=True))(self.x)
 
-    def set_output(self):
+    def __set_output(self):
         self.x = layers.Dense(
             self.vocab_len, activation="softmax", name="dense2"
         )(self.x)
         self.output = CTCLayer(self.blank_index, name="ctc_loss")(self.labels, self.x)
+
+    def get_summary(self):
+        return self.model.summary()
 
     def fit(self, train, val):
         self.history = self.model.fit(
@@ -195,7 +196,6 @@ class Model():
 
     def decode_batch_predictions(self, pred):
         input_len = np.ones(pred.shape[0]) * pred.shape[1]
-        # Use greedy search. For complex tasks, you can use beam search
         results = keras.backend.ctc_decode(pred, input_length=input_len, greedy=True)[0][0][
                   :, :self.max_label_len
                   ]
@@ -209,7 +209,6 @@ class Model():
         return output_text
 
     def predict(self, batch):
-
         batch_images = batch['image']
 
         pred = self.pred_model.predict(batch_images)
@@ -217,8 +216,26 @@ class Model():
 
         return pred_texts
 
+    def __encode_img(self, img):
+        img = tf.convert_to_tensor(img)
+        img = tf.image.rgb_to_grayscale(img)
+        img = tf.image.convert_image_dtype(img, tf.float32)
+        img = 1 - img
+        img = tf.image.resize_with_pad(img, self.input_shape[1], self.input_shape[0])
+        img = 0.5 - img
+        img = tf.transpose(img, perm=[1, 0, 2])
+        return tf.expand_dims(img, 0)
+
+    def predict_img(self, img):
+        img = self.__encode_img(img)
+
+        pred = self.pred_model.predict(img)
+        pred_text = self.decode_batch_predictions(pred)
+
+        return pred_text[0]
+
     def evaluate(self, batch):
         return self.model.evaluate(batch)
 
     def get_history(self):
-        return self.history
+        return self.history.history

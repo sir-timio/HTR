@@ -89,7 +89,7 @@ def meta_collect(ann_path: str, result_file: str,
 
 
 def make_augments(df: pd.DataFrame, WORKING_DIR: str,
-                  img_path: str, img_width: int, img_height: int,
+                  img_path: str, new_img_width: int, new_img_height: int
                   ) -> pd.DataFrame:
     """
     All code were made for HKR For Handwritten Kazakh & Russian Database
@@ -119,9 +119,11 @@ def make_augments(df: pd.DataFrame, WORKING_DIR: str,
 
         seq = iaa.Sequential(
             [
+                iaa.CenterPadToFixedSize(width=new_img_width, height=new_img_height,
+                                         pad_mode="constant", pad_cval=(255, 255)),
+                iaa.Resize({"height": new_img_height, "width": new_img_width}),
 
                 iaa.Sometimes(0.4, iaa.GaussianBlur(3.0)),
-
                 iaa.Sometimes(0.4, iaa.AveragePooling(3)),
                 iaa.Sometimes(0.4, iaa.Emboss(alpha=(0.0, 1.0), strength=(0.5, 1.5))),
                 iaa.Sometimes(0.4, iaa.GammaContrast((0.5, 1.0))),
@@ -130,10 +132,8 @@ def make_augments(df: pd.DataFrame, WORKING_DIR: str,
                 iaa.Sometimes(0.4, iaa.SaltAndPepper(0.1)),
 
                 iaa.ElasticTransformation(alpha=(0.5, 3.5), sigma=0.25),
-
-                iaa.PerspectiveTransform(scale=(0.02, 0.1)),
-            ],
-            random_order=True
+                iaa.PerspectiveTransform(scale=(0.02, 0.1))
+            ]
         )
 
         img = [imageio.imread(i) for i in path]
@@ -149,13 +149,13 @@ def make_augments(df: pd.DataFrame, WORKING_DIR: str,
     aug_df.to_csv(os.path.join(WORKING_DIR, 'metadata', 'augmeta.tsv'), sep='\t')
 
     return PreprocessFrame(metadata=aug_df.copy(),
-                           img_height=img_height, img_width=img_width)
+                           img_height=new_img_height, img_width=new_img_width)
 
 
 class PreprocessFrame(pd.DataFrame):
 
-    def __init__(self, metadata: str = 'data/metadata.tsv', img_height: int = 100,
-                 rem_str: str = '', img_width: int = 600,
+    def __init__(self, metadata: str = 'data/metadata.tsv', img_height: int = 120,
+                 rem_str: str = '', img_width: int = 900,
                  subs_str: str = '', *args, **kwargs) -> None:
 
         super().__init__(self.__initial_start(metadata), *args, **kwargs)
@@ -306,8 +306,8 @@ class PreprocessFrame(pd.DataFrame):
 class Dataset:
 
     def __init__(self, df: PreprocessFrame, test_size: float, val_size: float, img_path: str,
-                 WORKING_DIR: str, batch_size: int = 16, img_height=100, img_width=600,
-                 new_img_height=50, new_img_width=300, aug_df=None,max_length=None,
+                 WORKING_DIR: str, batch_size: int = 16, img_height=120, img_width=900,
+                 new_img_height=50, new_img_width=350, aug_df=None, max_length=None,
                  shuffle_buffer: int = 1024, train_test_split=True,
                  prefetch: int = tf.data.experimental.AUTOTUNE, *args, **kwargs) -> None:
 
@@ -456,11 +456,11 @@ class Dataset:
 def main():
 
     # image sizes
-    img_width = 600
-    img_height = 100
+    img_width = 900
+    img_height = 120
 
     # parameters of resized images
-    new_img_width = 300
+    new_img_width = 350
     new_img_height = 50
 
     # default paths
