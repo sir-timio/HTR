@@ -1,5 +1,5 @@
 import asyncio
-import requests
+import sys, os
 import logging
 import random
 from aiogram import Bot, types
@@ -16,9 +16,25 @@ from bot.config import TOKEN
 from aiogram.types import ReplyKeyboardRemove, \
     ReplyKeyboardMarkup, KeyboardButton, \
     InlineKeyboardMarkup, InlineKeyboardButton
+sys.path.append('..')
+from model.Model import Model
 
-sys.path.append('../model')
-from Model import Model
+
+img_width = 900
+img_height = 120
+
+# parameters of resized images
+new_img_width = 350
+new_img_height = 50
+
+batch_size = 16
+
+# default paths
+print(os.path.abspath(os.getcwd()))
+WORKING_DIR = os.path.join('../')
+ann_path = os.path.join(WORKING_DIR, 'ann')
+img_path = os.path.join(WORKING_DIR, 'img')
+metadata = os.path.join(WORKING_DIR, 'metadata', 'metadata.tsv')
 
 logging.basicConfig(format=u'%(filename)s [ LINE:%(lineno)+3s ]#%(levelname)+8s [%(asctime)s]  %(message)s',
                     level=logging.INFO)
@@ -34,12 +50,12 @@ error_process_messages = [
 ]
 
 prediction_process_messages = [
-    'мне кажется, это @',
-    'похоже на @',
-    'я вижу в этом @',
-    'кажется, это @',
+    'мне кажется, это "@"',
+    'похоже на "@"',
+    'я вижу в этом "@"',
+    'кажется, это "@"',
     # '@[:3]... @!',
-    '@, угадал?'
+    '"@", угадал?'
 ]
 
 demo_process_messages = [
@@ -65,7 +81,7 @@ model_params = {
     'blank_index': 74
 }
 
-model = Model(params)
+model = Model(model_params)
 model.build()
 model.load_weights('../checkpoints/training_2/cp.ckpt')
 
@@ -109,15 +125,16 @@ async def process_examples_command(msg: types.Message):
 
 @dp.message_handler(commands=['demo'])
 async def process_photo_command(msg: types.Message):
-    label = 'prediction'
     i = random.randint(0, num_samples)
     if i > int(num_samples * 0.7):
         replica = demo_process_messages[i % len(demo_process_messages)]
         await bot.send_message(msg.from_user.id, text=replica)
-    caption = prediction_process_messages[i % len(prediction_process_messages)]
-    caption = caption.replace('@', label)
     img_hash = samples[i]
-    file_path = get_path(img_hash)
+    url = get_path(img_hash)
+    img = np.array(Image.open(requests.get(url, stream=True).raw))
+    predicted_text = model.predict_img(img)
+    caption = prediction_process_messages[i % len(prediction_process_messages)]
+    caption = caption.replace('@', predicted_text)
     # use file path to download image via PIL
     #https://stackoverflow.com/questions/7391945/how-do-i-read-image-data-from-a-url-in-python
     await bot.send_photo(msg.from_user.id, img_hash,
@@ -145,7 +162,7 @@ async def echo_img(msg: types.Message):
     caption = prediction_process_messages[i % len(prediction_process_messages)].replace('@', label)
     img_hash = msg.photo[-1]['file_id']
 
-    file_path = get_path(img_hash)
+    url = get_path(img_hash)
     # use file path to download image via PIL
     #https://stackoverflow.com/questions/7391945/how-do-i-read-image-data-from-a-url-in-python
     img = np.array(Image.open(requests.get(url, stream=True).raw))
