@@ -5,6 +5,7 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
 from model.metrics import CTCLayer
+from model.Speller import Speller
 
 r'''
 params:
@@ -47,6 +48,8 @@ class Model():
         self.num_to_char = None
         self.char_to_num = None
         self.__set_mapping()
+        self.speller = Speller(self.char_to_num.get_vocabulary(), params['corpus'])
+    
 
         if 'checkpoint' in params['callbacks']:
             self.cp_path = params['checkpoint_path']
@@ -283,7 +286,7 @@ class Model():
             img = self.__encode_img(img)
             pred = self.pred_model.predict(img)
             pred_text = self.decode_batch_predictions(pred)
-            return pred_text[0]
+            return self.speller.compute_img(pred_text[0])
         except ValueError:
             return "Error: Incorrect photo"
 
