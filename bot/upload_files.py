@@ -4,7 +4,7 @@ from aiogram import Bot
 import asyncio
 import time
 
-from bot.config import TOKEN, MY_ID, DB_FILENAME
+from bot.config import TOKEN, MY_ID
 
 logging.basicConfig(format=u'%(filename)s [ LINE:%(lineno)+3s ]#%(levelname)+8s [%(asctime)s]  %(message)s',
                     level=logging.DEBUG)
