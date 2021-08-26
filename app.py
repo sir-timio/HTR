@@ -22,7 +22,7 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 cors = CORS(app)
 app.config['CORS_HEADERS'] = 'Content-Type'
 
-demo_df = pd.read_csv(os.path.join('/home', 'htr', 'samples.tsv'), sep='t', index_col=0)
+demo_df = pd.read_csv(os.path.join('/home', 'htr', 'samples.tsv'), sep='\t', index_col=0)
 
 
 def allowed_file(filename):
@@ -79,4 +79,4 @@ def demo_s():
 
 
 if __name__ == "__main__":
-    app.run()
+    app.run(threaded=True, port=5000)
