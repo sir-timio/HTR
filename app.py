@@ -1,5 +1,5 @@
 import os
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from werkzeug.utils import secure_filename
 from validators import url as urlval
 from core import model_predict
@@ -7,18 +7,22 @@ from flask_cors import CORS, cross_origin
 import requests
 import string
 import random
+import pandas as pd
 
 UPLOAD_FOLDER = os.path.join('/home', 'htr', 'tmp')
+samples = os.path.join('/home', 'htr', 'samples')
 if not os.path.exists(UPLOAD_FOLDER):
     os.mkdir(UPLOAD_FOLDER)
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
-app = Flask(__name__)
+app = Flask(__name__, static_url_path=samples)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 cors = CORS(app)
 app.config['CORS_HEADERS'] = 'Content-Type'
+
+demo_df = pd.read_csv(os.path.join('home', 'htr', 'samples.tsv'), sep='t', index_col=0)
 
 
 def allowed_file(filename):
@@ -64,6 +68,14 @@ def upload_file():
             return jsonify({"prediction": "no file or url"})
     else:
         return jsonify({"prediction": "please, post file or url"})
+
+
+@app.route('/demo', methods=['GET', 'POST'])
+@cross_origin()
+def demo_s():
+    ind = random.choice(demo_df.index)
+    return jsonify({"prediction": demo_df.loc[ind, 'label'],
+                    'picture': send_from_directory(samples, ind)})
 
 
 if __name__ == "__main__":
