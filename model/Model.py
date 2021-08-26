@@ -41,6 +41,7 @@ class Model():
         self.chars_path = params['chars_path']
         self.blank = params['blank']
         self.blank_index = None
+        self.vocab = params['vocab']
 
         self.num_to_char = None
         self.char_to_num = None
@@ -76,13 +77,9 @@ class Model():
             self.callbacks.append(early_stopping)
 
     def __set_mapping(self):
-        vocab = []
-        with open(self.chars_path, 'r') as file:
-            voc = file.read().splitlines()
-
         # Mapping characters to integers
         self.char_to_num = layers.experimental.preprocessing.StringLookup(
-            vocabulary=voc, mask_token=None
+            vocabulary=self.vocab, mask_token=None
         )
 
         # Mapping integers back to original characters
@@ -90,6 +87,7 @@ class Model():
             vocabulary=self.char_to_num.get_vocabulary(), mask_token=None, invert=True
         )
         self.blank_index = self.char_to_num(tf.strings.unicode_split(self.blank, input_encoding="UTF-8")).numpy()[0]
+
 
     def load_weights(self, path):
         self.model.load_weights(path)

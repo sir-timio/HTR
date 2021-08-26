@@ -306,13 +306,14 @@ class PreprocessFrame(pd.DataFrame):
 class Dataset:
 
     def __init__(self, df: PreprocessFrame, test_size: float, val_size: float, img_path: str,
-                 WORKING_DIR: str, batch_size: int = 16, img_height=120, img_width=900,
+                 WORKING_DIR: str, vocab=list('!(),-.:;?АБВГДЕЖЗИЙКЛМНОПРСТУФХЧШЩЫЬЭЮЯабвгдежзийклмнопрстуфхцчшщъыьэюяё #'), batch_size: int = 16, img_height=120, img_width=900,
                  new_img_height=50, new_img_width=350, aug_df=None, max_length=None,
                  shuffle_buffer: int = 1024, train_test_split=True,
                  prefetch: int = tf.data.experimental.AUTOTUNE, *args, **kwargs) -> None:
 
         self.df = df
         # Constants
+        self.vocab = vocab
         self.img_height = img_height
         self.img_width = img_width
         self.max_length = max_length if max_length else self.df.description.str.len().max()
@@ -352,17 +353,8 @@ class Dataset:
         # Creating mappers
 
         # Mapping characters to integers
-        counts = self.df.counts_to_df()
-        counts = counts.symbols.sort_values().unique().tolist() + [' ', '#']
-        vocab = pd.Series(counts).str.encode('utf8')
-
-        with open(os.path.join(WORKING_DIR, 'metadata', 'symbols.txt'), 'w') as f:
-            for sym in pd.Series(counts).iloc[:-1]:
-                f.write(sym + '\n')
-            f.write(pd.Series(counts).iloc[-1])
-
         self.char_to_num = layers.experimental.preprocessing.StringLookup(
-            vocabulary=vocab,
+            vocabulary=self.vocab,
             mask_token=None,
         )
 

@@ -60,7 +60,9 @@ prediction_process_messages = [
 
 demo_process_messages = [
     'ну, раз сам писать не хочешь, поищу у себя что-нибудь...\nнашел!',
-    'да уж, не у всех бумажка с ручкой под рукой\nдержи'
+    'да уж, не у всех бумажка с ручкой под рукой\nдержи',
+    'передаю запрос на спутник... :thinking_face:',
+    'устанавливаю связь с космосом... :thinking_face:',
 ]
 
 model_params = {
@@ -78,7 +80,8 @@ model_params = {
     'max_label_len': 22,
     'chars_path': os.path.join(os.path.split(metadata)[0], 'symbols.txt'),
     'blank': '#',
-    'blank_index': 74
+    'blank_index': 74,
+    'vocab': list('!(),-.:;?АБВГДЕЖЗИЙКЛМНОПРСТУФХЧШЩЫЬЭЮЯабвгдежзийклмнопрстуфхцчшщъыьэюяё #')
 }
 
 model = Model(model_params)
@@ -90,8 +93,7 @@ async def process_start_command(message: types.Message):
     start_kb = ReplyKeyboardMarkup(
         resize_keyboard=True, one_time_keyboard=True
     ).add(KeyboardButton('/help'))
-
-    await message.reply(text(emojize('Привет! Я бот, который любит читать. Умею только на русском, но быстро учусь новому :nerd:'
+    await message.reply(text(emojize('Привет! Я бот, который любит читать. Умею только на русском, но быстро учусь новому :nerd_face:'
                         '\nИспользуй /help, '
                         'чтобы узнать список доступных команд!')), reply_markup=start_kb, parse_mode=ParseMode.MARKDOWN)
 
@@ -106,11 +108,11 @@ async def process_help_command(message: types.Message):
         resize_keyboard=True, one_time_keyboard=False
     ).add(ex_b).add(demo_b).add(info_b)
 
-    msg = text(bold('Присылай фото, а я попробую угадать, что ты там написал\nдоступны следующие команды:'),
+    msg = emojize(text(bold('Присылай фото, а я попробую угадать, что ты там написал\nдоступны следующие команды:'),
                '/examples - пример ожидаемых фото',
                '/demo - проверить нейросеть на случайном изображении',
                '/info - подробная информация о проекте',
-               'Возникли трудности? пиши @sir\_timio', sep='\n')
+               'Возникли трудности? пиши @sir\_timio :smirking_face:', sep='\n'))
     await bot.send_message(message.from_user.id, msg, parse_mode=ParseMode.MARKDOWN, reply_markup=help_kb)
 
 
@@ -126,9 +128,9 @@ async def process_examples_command(msg: types.Message):
 @dp.message_handler(commands=['demo'])
 async def process_photo_command(msg: types.Message):
     i = random.randint(0, num_samples)
-    if i > int(num_samples * 0.7):
+    if i > int(num_samples * 0.4):
         replica = demo_process_messages[i % len(demo_process_messages)]
-        await bot.send_message(msg.from_user.id, text=replica)
+        await bot.send_message(msg.from_user.id, text=emojize(replica))
     img_hash = samples[i]
     url = get_path(img_hash)
     img = np.array(Image.open(requests.get(url, stream=True).raw))
@@ -157,23 +159,25 @@ async def process_info_command(msg: types.Message):
 
 @dp.message_handler(content_types=['photo'])
 async def echo_img(msg: types.Message):
-    label = 'предсказание'
-    i = random.randint(0, len(prediction_process_messages))
-    caption = prediction_process_messages[i % len(prediction_process_messages)].replace('@', label)
     img_hash = msg.photo[-1]['file_id']
-
     url = get_path(img_hash)
     # use file path to download image via PIL
     #https://stackoverflow.com/questions/7391945/how-do-i-read-image-data-from-a-url-in-python
     img = np.array(Image.open(requests.get(url, stream=True).raw))
     predicted_text = model.predict_img(img)
-    await msg.reply(predicted_text, parse_mode=ParseMode.MARKDOWN)
+    if str.isupper(predicted_text[0]):
+        cases = [str.isupper(s) for s in predicted_text[1:]]
+        if any(cases) and not all(cases):
+            predicted_text = predicted_text[0] + str.lower(predicted_text[1:])
+    i = random.randint(0, len(prediction_process_messages))
+    caption = prediction_process_messages[i % len(prediction_process_messages)].replace('@', predicted_text)
+    await msg.reply(caption, parse_mode=ParseMode.MARKDOWN)
 
 
 @dp.message_handler(content_types=ContentType.ANY)
 async def unknown_message(msg: types.Message):
-    message_text = text(emojize('Я не знаю, что с этим делать :astonished:'),
-                        italic('\nЯ просто напомню,'), 'что есть',
+    message_text = text(emojize('Я не знаю, что с этим делать :smiling_face_with_tear:'),
+                        emojize(text(italic('\nЯ просто напомню,'), 'что есть')),
                         code('команда'), '/help')
     await msg.reply(message_text, parse_mode=ParseMode.MARKDOWN)
 
