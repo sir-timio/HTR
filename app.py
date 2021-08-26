@@ -8,7 +8,10 @@ import requests
 import string
 import random
 
-UPLOAD_FOLDER = os.path.join('/home', 'mts', 'mysite', 'tmp')
+UPLOAD_FOLDER = os.path.join('/home', 'htr', 'tmp')
+if not os.path.exists(UPLOAD_FOLDER):
+    os.mkdir(UPLOAD_FOLDER)
+
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
 app = Flask(__name__)
@@ -36,9 +39,8 @@ def upload_file():
             if file.filename == '':
                 return jsonify({"prediction": "no file, upload only one"})
             elif file and allowed_file(file.filename):
-                filename = secure_filename(file.filename)
+                filename = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(file.filename))
                 file.save(filename)
-                filename = os.path.join(app.config['UPLOAD_FOLDER'], filename)
                 prediction = model_predict(filename)
                 os.remove(filename)
                 return jsonify({'prediction': prediction})

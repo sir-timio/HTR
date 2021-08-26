@@ -1,4 +1,8 @@
-Flask==1.1.2
+Werkzeug >= 2.0
+Flask==2.0.0
+Flask-Cors==3.0.10
+validators==0.18.2
+requests==2.25.1
 imageai==2.1.6
 Keras-Preprocessing==1.1.2
 keras-resnet==0.2.0

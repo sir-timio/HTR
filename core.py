@@ -13,7 +13,7 @@ new_img_height = 50
 batch_size = 16
 
 # default paths
-WORKING_DIR = '/home/mtshw/mysite/htr'
+WORKING_DIR = '/home/htr/htr'
 ann_path = os.path.join(WORKING_DIR, 'ann')
 img_path = os.path.join(WORKING_DIR, 'img')
 metadata = os.path.join(WORKING_DIR, 'metadata', 'metadata.tsv')
@@ -40,10 +40,11 @@ model = Model(model_params)
 model.build()
 model.load_weights('htr/checkpoints/training_2/cp.ckpt')
 
+
 def model_predict(full_path='as', gpu=True):
     try:
         img = np.array(Image.open(full_path))
         predicted_text = model.predict_img(img)
-    except:
+    except Exception:
         predicted_text = 'something went wrong...'
     return predicted_text

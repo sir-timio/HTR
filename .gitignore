@@ -1,3 +1,5 @@
+tmp/*
+tmp/
 HKR_Dataset_Words_Public/
 arxivs/
 .idea/
