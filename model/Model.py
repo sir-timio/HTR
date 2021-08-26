@@ -42,6 +42,7 @@ class Model():
         self.vocab_len = params['vocab_len']
         self.max_label_len = params['max_label_len']
         self.chars_path = params['chars_path']
+        self.vocab = params['vocab']
         self.blank = params['blank']
         self.blank_index = None
 
@@ -81,13 +82,9 @@ class Model():
             self.callbacks.append(early_stopping)
 
     def __set_mapping(self):
-        vocab = []
-        with open(self.chars_path, 'r') as file:
-            voc = file.read().splitlines()
-
         # Mapping characters to integers
         self.char_to_num = layers.experimental.preprocessing.StringLookup(
-            vocabulary=voc, mask_token=None
+            vocabulary=self.vocab, mask_token=None
         )
 
         # Mapping integers back to original characters

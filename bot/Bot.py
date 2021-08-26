@@ -1,5 +1,6 @@
 import asyncio
 import sys, os
+sys.path.append('..')
 import logging
 import random
 from aiogram import Bot, types
@@ -15,7 +16,6 @@ from PIL import Image
 import requests
 from bot.config import TOKEN
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
-sys.path.append('..')
 from model.Model import Model
 
 
@@ -81,7 +81,8 @@ model_params = {
     'chars_path': os.path.join(os.path.split(metadata)[0], 'symbols.txt'),
     'blank': '#',
     'blank_index': 74,
-    'vocab': list('!(),-.:;?АБВГДЕЖЗИЙКЛМНОПРСТУФХЧШЩЫЬЭЮЯабвгдежзийклмнопрстуфхцчшщъыьэюяё #')
+    'vocab': list('!(),-.:;?АБВГДЕЖЗИЙКЛМНОПРСТУФХЧШЩЫЬЭЮЯабвгдежзийклмнопрстуфхцчшщъыьэюяё #'),
+    'corpus': os.path.join(os.path.split(metadata)[0], 'corpus.txt')
 }
 
 model = Model(model_params)
