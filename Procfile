@@ -1,1 +1,1 @@
-web: gunicorn app:htrmts
+web: gunicorn app:app
