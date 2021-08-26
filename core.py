@@ -38,7 +38,7 @@ model_params = {
 
 model = Model(model_params)
 model.build()
-model.load_weights('../checkpoints/training_2/cp.ckpt')
+model.load_weights('htr/checkpoints/training_2/cp.ckpt')
 
 def model_predict(full_path='as', gpu=True):
     try:
