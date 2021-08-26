@@ -13,7 +13,7 @@ new_img_height = 50
 batch_size = 16
 
 # default paths
-WORKING_DIR = '/home/mts/mysite/htr'
+WORKING_DIR = '/home/mtshw/mysite/htr'
 ann_path = os.path.join(WORKING_DIR, 'ann')
 img_path = os.path.join(WORKING_DIR, 'img')
 metadata = os.path.join(WORKING_DIR, 'metadata', 'metadata.tsv')
