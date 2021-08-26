@@ -3,10 +3,14 @@ from tensorflow.keras import layers
 from tensorflow.keras import backend as K
 
 class CTCLayer(layers.Layer):
+
     def __init__(self, blank_index, name=None):
         super().__init__(name=name)
         self.loss_fn = tf.keras.backend.ctc_batch_cost
         self.blank_index = blank_index
+
+    def get_config(self):
+        return super().get_config()
 
     def cer(self, y_true, y_pred, pred_sequence_length, true_sequence_length):
         batch_len = tf.cast(tf.shape(y_true)[0], dtype="int64")
