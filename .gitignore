@@ -158,3 +158,8 @@ Icon
 Network Trash Folder
 Temporary Items
 .apdisk
+
+bot/token.json
+bot/config.py
+bot/img/
+bot/samples/
