@@ -8,14 +8,13 @@ from aiogram.utils.emoji import emojize
 from aiogram.dispatcher import Dispatcher
 from aiogram.types.message import ContentType
 from aiogram.utils.markdown import text, bold, italic, code
-from aiogram.types import ParseMode, InputMediaPhoto, InputMediaVideo, ChatActions
+from aiogram.types import ParseMode, InputMediaPhoto
 import numpy as np
+import pandas as pd
 from PIL import Image
 import requests
 from bot.config import TOKEN
-from aiogram.types import ReplyKeyboardRemove, \
-    ReplyKeyboardMarkup, KeyboardButton, \
-    InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 sys.path.append('..')
 from model.Model import Model
 
@@ -39,7 +38,7 @@ metadata = os.path.join(WORKING_DIR, 'metadata', 'metadata.tsv')
 logging.basicConfig(format=u'%(filename)s [ LINE:%(lineno)+3s ]#%(levelname)+8s [%(asctime)s]  %(message)s',
                     level=logging.INFO)
 
-samples = np.loadtxt('data/samples.txt', dtype=str, comments="#")
+samples = pd.read_csv('data/samples.csv')
 num_samples = len(samples)
 
 bot = Bot(token=TOKEN)
@@ -132,12 +131,9 @@ async def process_photo_command(msg: types.Message):
     if i > int(num_samples * 0.4):
         replica = demo_process_messages[i % len(demo_process_messages)]
         await bot.send_message(msg.from_user.id, text=emojize(replica))
-    img_hash = samples[i]
-    url = get_path(img_hash)
-    img = np.array(Image.open(requests.get(url, stream=True).raw))
-    predicted_text = model.predict_img(img)
+    img_hash, label = samples.iloc[i]
     caption = prediction_process_messages[i % len(prediction_process_messages)]
-    caption = caption.replace('@', predicted_text)
+    caption = caption.replace('@', label)
     # use file path to download image via PIL
     #https://stackoverflow.com/questions/7391945/how-do-i-read-image-data-from-a-url-in-python
     await bot.send_photo(msg.from_user.id, img_hash,
