@@ -1,6 +1,7 @@
 # Распознавание рукописного текста
 
-Результат работы: https://nbviewer.jupyter.org/github/sir-timio/HTR/blob/main/run.ipynb
+Результат работы: https://nbviewer.jupyter.org/github/sir-timio/HTR/blob/main/run.ipynb  
+
 Телеграмм бот: https://t.me/neureader_bot
 ## Использование с помощью Docker
 
