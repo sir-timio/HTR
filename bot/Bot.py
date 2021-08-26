@@ -46,7 +46,8 @@ bot = Bot(token=TOKEN)
 dp = Dispatcher(bot)
 
 error_process_messages = [
-    'что-то в глаз попало, узнай, что я умею \help'
+    'что-то в глаз попало :smiling_face_with_tear: ',
+    'Я не знаю, что с этим делать :man_shrugging:'
 ]
 
 prediction_process_messages = [
@@ -59,8 +60,8 @@ prediction_process_messages = [
 ]
 
 demo_process_messages = [
-    'ну, раз сам писать не хочешь, поищу у себя что-нибудь...\nнашел!',
-    'да уж, не у всех бумажка с ручкой под рукой\nдержи',
+    'раз сам писать не хочешь, поищу у себя что-нибудь...\nнашел!',
+    'понимаю, не у всех бумага с ручкой под рукой\nдержи',
     'передаю запрос на спутник... :thinking_face:',
     'устанавливаю связь с космосом... :thinking_face:',
 ]
@@ -153,7 +154,8 @@ def get_path(hash):
 
 @dp.message_handler(commands=['info'])
 async def process_info_command(msg: types.Message):
-    info = 'https://github.com/sir-timio/HTR'
+    info = text('код проекта - https://github.com/sir-timio/HTR\n'
+                'вебсайт - https://alex123012.github.io/HTR_site/\n')
     await bot.send_message(msg.from_user.id, info)
 
 
@@ -176,7 +178,8 @@ async def echo_img(msg: types.Message):
 
 @dp.message_handler(content_types=ContentType.ANY)
 async def unknown_message(msg: types.Message):
-    message_text = text(emojize('Я не знаю, что с этим делать :smiling_face_with_tear:'),
+    i = random.randint(0, len(error_process_messages))
+    message_text = text(emojize(error_process_messages[i]),
                         emojize(text(italic('\nЯ просто напомню,'), 'что есть')),
                         code('команда'), '/help')
     await msg.reply(message_text, parse_mode=ParseMode.MARKDOWN)
