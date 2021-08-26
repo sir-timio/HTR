@@ -116,13 +116,17 @@ def make_augments(df: pd.DataFrame, WORKING_DIR: str,
     paths = [paths[i:i + 500] for i in range(0, len(paths), 500)]
 
     for path in tqdm(paths):
+        
+        format_seq = iaa.Sequential(
+            [
+                iaa.CenterPadToFixedSize(width=new_img_width, height=new_img_height, 
+                                         pad_mode="constant", pad_cval=(255, 255)),
+                iaa.Resize({"height": new_img_height, "width": new_img_width})
+            ]
+        )
 
         seq = iaa.Sequential(
             [
-                iaa.CenterPadToFixedSize(width=new_img_width, height=new_img_height,
-                                         pad_mode="constant", pad_cval=(255, 255)),
-                iaa.Resize({"height": new_img_height, "width": new_img_width}),
-
                 iaa.Sometimes(0.4, iaa.GaussianBlur(3.0)),
                 iaa.Sometimes(0.4, iaa.AveragePooling(3)),
                 iaa.Sometimes(0.4, iaa.Emboss(alpha=(0.0, 1.0), strength=(0.5, 1.5))),
@@ -133,16 +137,17 @@ def make_augments(df: pd.DataFrame, WORKING_DIR: str,
 
                 iaa.ElasticTransformation(alpha=(0.5, 3.5), sigma=0.25),
                 iaa.PerspectiveTransform(scale=(0.02, 0.1))
-            ]
+            ], 
+            random_order=True
         )
 
         img = [imageio.imread(i) for i in path]
 
-        ls = seq(images=img)
+        ls = seq(images=format_seq(images=img))
         for i in range(len(path)):
             _, name = os.path.split(path[i])
             name = os.path.join(aug_1, 'aug_' + name)
-            cv2.imwrite(name, ls[i])
+            cv2.imwrite(name, cv2.cvtColor(ls[i], cv2.COLOR_RGB2BGR))
 
     aug_df = df.copy()
     aug_df.index = aug_df.index.to_series().apply(lambda x: os.path.join(os.path.split(aug_1)[-1], 'aug_' + x))
@@ -306,14 +311,13 @@ class PreprocessFrame(pd.DataFrame):
 class Dataset:
 
     def __init__(self, df: PreprocessFrame, test_size: float, val_size: float, img_path: str,
-                 WORKING_DIR: str, vocab=list('!(),-.:;?АБВГДЕЖЗИЙКЛМНОПРСТУФХЧШЩЫЬЭЮЯабвгдежзийклмнопрстуфхцчшщъыьэюяё #'), batch_size: int = 16, img_height=120, img_width=900,
+                 WORKING_DIR: str, batch_size: int = 16, img_height=120, img_width=900,
                  new_img_height=50, new_img_width=350, aug_df=None, max_length=None,
                  shuffle_buffer: int = 1024, train_test_split=True,
                  prefetch: int = tf.data.experimental.AUTOTUNE, *args, **kwargs) -> None:
 
         self.df = df
         # Constants
-        self.vocab = vocab
         self.img_height = img_height
         self.img_width = img_width
         self.max_length = max_length if max_length else self.df.description.str.len().max()
@@ -353,8 +357,17 @@ class Dataset:
         # Creating mappers
 
         # Mapping characters to integers
+        counts = self.df.counts_to_df()
+        counts = counts.symbols.sort_values().unique().tolist() + [' ', '#']
+        vocab = pd.Series(counts).str.encode('utf8')
+
+        with open(os.path.join(WORKING_DIR, 'metadata', 'symbols.txt'), 'w') as f:
+            for sym in pd.Series(counts).iloc[:-1]:
+                f.write(sym + '\n')
+            f.write(pd.Series(counts).iloc[-1])
+
         self.char_to_num = layers.experimental.preprocessing.StringLookup(
-            vocabulary=self.vocab,
+            vocabulary=vocab,
             mask_token=None,
         )
 
@@ -425,7 +438,7 @@ class Dataset:
         # 2. Decode and convert to grayscale
         img = tf.io.decode_png(img, channels=1)
 
-        # 3. Convert to float32 in [0, 1] range
+        # 3. Convert to float32 in [0, 1] range and binarize
         img = tf.image.convert_image_dtype(img, tf.float32)
 
         # 4. Resize to the desired size

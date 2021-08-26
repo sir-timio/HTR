@@ -1,4 +1,6 @@
+import cv2
 import numpy as np
+from numpy.lib.stride_tricks import as_strided
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
@@ -41,7 +43,6 @@ class Model():
         self.chars_path = params['chars_path']
         self.blank = params['blank']
         self.blank_index = None
-        self.vocab = params['vocab']
 
         self.num_to_char = None
         self.char_to_num = None
@@ -77,9 +78,13 @@ class Model():
             self.callbacks.append(early_stopping)
 
     def __set_mapping(self):
+        vocab = []
+        with open(self.chars_path, 'r') as file:
+            voc = file.read().splitlines()
+
         # Mapping characters to integers
         self.char_to_num = layers.experimental.preprocessing.StringLookup(
-            vocabulary=self.vocab, mask_token=None
+            vocabulary=voc, mask_token=None
         )
 
         # Mapping integers back to original characters
@@ -87,7 +92,6 @@ class Model():
             vocabulary=self.char_to_num.get_vocabulary(), mask_token=None, invert=True
         )
         self.blank_index = self.char_to_num(tf.strings.unicode_split(self.blank, input_encoding="UTF-8")).numpy()[0]
-
 
     def load_weights(self, path):
         self.model.load_weights(path)
@@ -214,9 +218,57 @@ class Model():
 
         return pred_texts
 
+    def __strided_rescale(self, img, bin_fac):
+        strided = as_strided(img, shape=(img.shape[0]//bin_fac, img.shape[1]//bin_fac, bin_fac, bin_fac),
+                             strides=((img.strides[0]*bin_fac, img.strides[1]*bin_fac)+img.strides))
+        return strided.mean(axis=-1).mean(axis=-1)
+
+    def __resize_img(self, img, new_img_height, new_img_width):
+        img_size = np.array(img.shape[:2])
+        new_img_size = np.array([new_img_height, new_img_width])
+        diff = img_size - new_img_size
+        h_ratio = w_ratio = 0
+        if diff[0] > 0:
+            h_ratio = img_size[0] / new_img_size[0]
+        if diff[1] > 0:
+            w_ratio = img_size[0] / new_img_size[0]
+        if h_ratio != 0 or w_ratio != 0:
+            ratio = round(max(h_ratio, w_ratio))
+            img = self.__strided_rescale(img, ratio)
+        return img
+
+    def __apply_brightness_contrast(self, input_img, brightness=0, contrast=0):
+        if brightness != 0:
+            if brightness > 0:
+                shadow = brightness
+                highlight = 255
+            else:
+                shadow = 0
+                highlight = 255 + brightness
+            alpha_b = (highlight - shadow)/255
+            gamma_b = shadow
+
+            buf = cv2.addWeighted(input_img, alpha_b, input_img, 0, gamma_b)
+        else:
+            buf = input_img.copy()
+
+        if contrast != 0:
+            f = 131*(contrast + 127)/(127*(131-contrast))
+            alpha_c = f
+            gamma_c = 127*(1-f)
+
+            buf = cv2.addWeighted(buf, alpha_c, buf, 0, gamma_c)
+
+        return buf
+
     def __encode_img(self, img):
+        img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+        mean_val = img.mean()
+        if mean_val < 230:
+            img = self.__apply_brightness_contrast(img, 230/mean_val*60, 230/mean_val*30)
+        img = self.__resize_img(img, self.input_shape[1], self.input_shape[0]).astype(np.uint8)
+        img = np.expand_dims(img, 2)
         img = tf.convert_to_tensor(img)
-        img = tf.image.rgb_to_grayscale(img)
         img = tf.image.convert_image_dtype(img, tf.float32)
         img = 1 - img
         img = tf.image.resize_with_pad(img, self.input_shape[1], self.input_shape[0])
@@ -224,13 +276,16 @@ class Model():
         img = tf.transpose(img, perm=[1, 0, 2])
         return tf.expand_dims(img, 0)
 
-    def predict_img(self, img):
-        img = self.__encode_img(img)
-
-        pred = self.pred_model.predict(img)
-        pred_text = self.decode_batch_predictions(pred)
-
-        return pred_text[0]
+    def predict_img(self, img): #img is np.ndarray of shape (height, width, 3) / (height, width, 1) - rgb, gray
+        try:
+            if len(img.shape) == 2:
+                img = np.stack((img,)*3, axis=-1)
+            img = self.__encode_img(img)
+            pred = self.pred_model.predict(img)
+            pred_text = self.decode_batch_predictions(pred)
+            return pred_text[0]
+        except ValueError:
+            return "Error: Incorrect photo"
 
     def evaluate(self, batch):
         return self.model.evaluate(batch)
