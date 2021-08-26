@@ -119,7 +119,7 @@ async def process_help_command(message: types.Message):
 
 @dp.message_handler(commands=['examples'])
 async def process_examples_command(msg: types.Message):
-    i = random.randint(0, num_samples-6)
+    i = random.randint(0, num_samples-7)
     media = [InputMediaPhoto(samples[i], 'жду что-то похожее')]
     for photo_id in samples[i+1:i+5]:
         media.append(InputMediaPhoto(photo_id))
@@ -128,7 +128,7 @@ async def process_examples_command(msg: types.Message):
 
 @dp.message_handler(commands=['demo'])
 async def process_photo_command(msg: types.Message):
-    i = random.randint(0, num_samples)
+    i = random.randint(0, num_samples-1)
     if i > int(num_samples * 0.4):
         replica = demo_process_messages[i % len(demo_process_messages)]
         await bot.send_message(msg.from_user.id, text=emojize(replica))
@@ -171,14 +171,14 @@ async def echo_img(msg: types.Message):
         cases = [str.isupper(s) for s in predicted_text[1:]]
         if any(cases) and not all(cases):
             predicted_text = predicted_text[0] + str.lower(predicted_text[1:])
-    i = random.randint(0, len(prediction_process_messages))
+    i = random.randint(0, len(prediction_process_messages)-1)
     caption = prediction_process_messages[i % len(prediction_process_messages)].replace('@', predicted_text)
     await msg.reply(caption, parse_mode=ParseMode.MARKDOWN)
 
 
 @dp.message_handler(content_types=ContentType.ANY)
 async def unknown_message(msg: types.Message):
-    i = random.randint(0, len(error_process_messages))
+    i = random.randint(0, len(error_process_messages)-1)
     message_text = text(emojize(error_process_messages[i]),
                         emojize(text(italic('\nЯ просто напомню,'), 'что есть')),
                         code('команда'), '/help')
