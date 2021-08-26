@@ -74,7 +74,7 @@ def upload_file():
 @cross_origin()
 def demo_s():
     ind = random.choice(demo_df.index)
-    return jsonify({"prediction": demo_df.loc[ind, 'label'],
+    return jsonify({"prediction": demo_df.loc[ind, demo_df.columns[0]],
                     'picture': send_from_directory(samples, ind)})
 
 
