@@ -10,10 +10,15 @@ from aiogram.types.message import ContentType
 from aiogram.utils.markdown import text, bold, italic, code
 from aiogram.types import ParseMode, InputMediaPhoto, InputMediaVideo, ChatActions
 import numpy as np
+from PIL import Image
+import requests
 from bot.config import TOKEN
 from aiogram.types import ReplyKeyboardRemove, \
     ReplyKeyboardMarkup, KeyboardButton, \
     InlineKeyboardMarkup, InlineKeyboardButton
+
+sys.path.append('../model')
+from Model import Model
 
 logging.basicConfig(format=u'%(filename)s [ LINE:%(lineno)+3s ]#%(levelname)+8s [%(asctime)s]  %(message)s',
                     level=logging.INFO)
@@ -41,6 +46,28 @@ demo_process_messages = [
     'ну, раз сам писать не хочешь, поищу у себя что-нибудь...\nнашел!',
     'да уж, не у всех бумажка с ручкой под рукой\nдержи'
 ]
+
+model_params = {
+    'callbacks': ['checkpoint', 'csv_log', 'tb_log', 'early_stopping'],
+    'metrics': ['cer', 'accuracy'],
+    'checkpoint_path': os.path.join(WORKING_DIR, 'checkpoints/training_2/cp.ckpt'),
+    'csv_log_path': os.path.join(WORKING_DIR, 'logs/csv_logs/log_2.csv'),
+    'tb_log_path': os.path.join(WORKING_DIR, 'logs/tb_logs/log2'),
+    'tb_update_freq': 200,
+    'epochs': 50,
+    'batch_size': batch_size,
+    'early_stopping_patience': 10,
+    'input_img_shape': (new_img_width, new_img_height, 1),
+    'vocab_len': 75,
+    'max_label_len': 22,
+    'chars_path': os.path.join(os.path.split(metadata)[0], 'symbols.txt'),
+    'blank': '#',
+    'blank_index': 74
+}
+
+model = Model(params)
+model.build()
+model.load_weights('../checkpoints/training_2/cp.ckpt')
 
 @dp.message_handler(commands=['start'])
 async def process_start_command(message: types.Message):
@@ -121,7 +148,9 @@ async def echo_img(msg: types.Message):
     file_path = get_path(img_hash)
     # use file path to download image via PIL
     #https://stackoverflow.com/questions/7391945/how-do-i-read-image-data-from-a-url-in-python
-    await bot.send_photo(msg.from_user.id, img_hash, caption=caption)
+    img = np.array(Image.open(requests.get(url, stream=True).raw))
+    predicted_text = model.predict_img(img)
+    await msg.reply(predicted_text, parse_mode=ParseMode.MARKDOWN)
 
 
 @dp.message_handler(content_types=ContentType.ANY)
