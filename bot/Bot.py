@@ -109,7 +109,7 @@ async def process_help_command(message: types.Message):
         resize_keyboard=True, one_time_keyboard=False
     ).add(ex_b).add(demo_b).add(info_b)
 
-    msg = emojize(text(bold('Присылай фото, а я попробую угадать, что ты там написал\nдоступны следующие команды:'),
+    msg = emojize(text(bold('Присылай яркое и контрастное фото на белом фоне, а я попробую угадать, что ты там написал\nдоступны следующие команды:'),
                '/examples - пример ожидаемых фото',
                '/demo - проверить нейросеть на случайном изображении',
                '/info - подробная информация о проекте',
