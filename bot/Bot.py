@@ -120,8 +120,8 @@ async def process_help_command(message: types.Message):
 @dp.message_handler(commands=['examples'])
 async def process_examples_command(msg: types.Message):
     i = random.randint(0, num_samples-7)
-    media = [InputMediaPhoto(samples[i], 'жду что-то похожее')]
-    for photo_id in samples[i+1:i+5]:
+    media = [InputMediaPhoto(samples['hash'].values[i], 'жду что-то похожее')]
+    for photo_id in samples['hash'].values[i+1:i+5]:
         media.append(InputMediaPhoto(photo_id))
 
     await bot.send_media_group(msg.from_user.id, media)
@@ -151,8 +151,7 @@ def get_path(hash):
 
 @dp.message_handler(commands=['info'])
 async def process_info_command(msg: types.Message):
-    info = text('код проекта - https://github.com/sir-timio/HTR\n'
-                'вебсайт - https://alex123012.github.io/HTR_site/\n')
+    info = text('код проекта - https://github.com/sir-timio/HTR\n')
     await bot.send_message(msg.from_user.id, info)
 
 
