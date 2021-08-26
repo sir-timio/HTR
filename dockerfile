@@ -1,5 +1,5 @@
 FROM  tensorflow/tensorflow:2.4.1-gpu
-
+EXPOSE 5000/tcp
 RUN apt-get update && \
 	apt-get install -y libgl1
 # libgl1 - library for opencv
