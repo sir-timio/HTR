@@ -3,6 +3,10 @@
 Результат работы: https://nbviewer.jupyter.org/github/sir-timio/HTR/blob/main/run.ipynb  
 
 Телеграмм бот: https://t.me/neureader_bot
+
+![](pictures/screenshot_0.jpg)
+![](pictures/screenshot_0.jpg)
+
 ## Использование с помощью Docker
 
 - установите Docker
