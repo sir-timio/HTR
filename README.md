@@ -4,8 +4,7 @@
 
 Телеграмм бот: https://t.me/neureader_bot
 
-![](pictures/screenshot_0.jpg)
-![](pictures/screenshot_1.jpg)
+![](pictures/bot_screenshot.jpg)
 
 ## Использование с помощью Docker
 
