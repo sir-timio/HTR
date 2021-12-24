@@ -1,8 +1,27 @@
+# Handwritten text recognition
+Result notebook: https://nbviewer.jupyter.org/github/sir-timio/HTR/blob/main/run.ipynb 
+
+## Usage with Docker
+- install docker
+- open terminal and go to project directory
+- build 
+```bash
+docker build -t htr/tfgpu .
+```
+- change to your absolute path to project and run:
+```bash
+docker run -it -p 8888:8888 -v /absolute/path/to/HTR:/home/htr htr/tfgpu
+```
+- open jupyter via url
+
+
+
 # Распознавание рукописного текста
 
 Результат работы: https://nbviewer.jupyter.org/github/sir-timio/HTR/blob/main/run.ipynb  
 
 Телеграмм бот: https://t.me/neureader_bot
+
 
 ![](pictures/bot_screenshot.jpg)
 
