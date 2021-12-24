@@ -25,7 +25,7 @@ docker run -it -p 8888:8888 -v /absolute/path/to/HTR:/home/htr htr/tfgpu
 - open jupyter via url
 
 
-## Использование с помощью Docker
+### Использование с помощью Docker
 
 - установите Docker
 - откройте терминал и перейдите в данный каталог
