@@ -9,7 +9,6 @@ Result notebook: https://nbviewer.jupyter.org/github/sir-timio/HTR/blob/main/run
 Телеграмм бот: https://t.me/neureader_bot
 
 
-![](pictures/bot_screenshot.jpg)
 
 ### Usage with Docker
 - install docker
