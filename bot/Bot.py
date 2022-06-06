@@ -81,7 +81,6 @@ model_params = {
     'chars_path': os.path.join(os.path.split(metadata)[0], 'symbols.txt'),
     'blank': '#',
     'blank_index': 74,
-    'vocab': list('!(),-.:;?АБВГДЕЖЗИЙКЛМНОПРСТУФХЧШЩЫЬЭЮЯабвгдежзийклмнопрстуфхцчшщъыьэюяё #'),
     'corpus': os.path.join(os.path.split(metadata)[0], 'corpus.txt')
 }
 

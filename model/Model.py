@@ -42,15 +42,15 @@ class Model():
         self.vocab_len = params['vocab_len']
         self.max_label_len = params['max_label_len']
         self.chars_path = params['chars_path']
-        self.vocab = params['vocab']
         self.blank = params['blank']
         self.blank_index = None
 
+        self.vocab = None
         self.num_to_char = None
         self.char_to_num = None
         self.__set_mapping()
-        self.speller = Speller(self.char_to_num.get_vocabulary(), params['corpus'])
-    
+        self.speller = Speller(self.vocab, params['corpus'])
+
 
         if 'checkpoint' in params['callbacks']:
             self.cp_path = params['checkpoint_path']
@@ -82,11 +82,11 @@ class Model():
             self.callbacks.append(early_stopping)
 
     def __set_mapping(self):
+        self.vocab = open(self.chars_path, encoding="utf8").read().split("\n")
         # Mapping characters to integers
         self.char_to_num = layers.experimental.preprocessing.StringLookup(
             vocabulary=self.vocab, mask_token=None
         )
-
         # Mapping integers back to original characters
         self.num_to_char = layers.experimental.preprocessing.StringLookup(
             vocabulary=self.char_to_num.get_vocabulary(), mask_token=None, invert=True
